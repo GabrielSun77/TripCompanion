@@ -1,0 +1,1135 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fdf1e3">
+<meta name="color-scheme" content="light">
+<title>行程夥伴</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#fdf1e3; --surface:#ffffff; --surface-2:#fff8ef; --ink:#3a2a1a; --ink-soft:#8a7259;
+    --line:#f0ddc2; --accent:#2f9e6e; --accent-soft:#e1f3ea; --accent-ink:#ffffff;
+    --danger:#c1483f; --danger-soft:#f7e2df; --good:#2f9e6e;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif;}
+  body{padding-bottom:64px;}
+  h1,h2,h3{margin:0;}
+  button{font-family:inherit;}
+  #app{max-width:520px;margin:0 auto;min-height:100vh;background:var(--bg);}
+  .topbar{position:sticky;top:0;background:var(--bg);z-index:5;padding:14px 16px 10px;
+    display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);}
+  .topbar .back{font-size:20px;color:var(--accent);background:none;border:none;padding:4px 8px;cursor:pointer;}
+  .topbar h1{font-size:18px;flex:1;}
+  .page{padding:16px;padding-bottom:90px;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .btn{display:inline-block;background:var(--accent);color:var(--accent-ink);border:none;border-radius:10px;
+    padding:12px 16px;font-size:15px;font-weight:700;text-align:center;cursor:pointer;width:100%;}
+  .btn.secondary{background:var(--surface-2);color:var(--ink);border:1px solid var(--line);}
+  .btn.danger{background:var(--danger);color:#fff;}
+  .btn.small{width:auto;padding:8px 12px;font-size:13px;}
+  .btn-row{display:flex;gap:8px;}
+  .btn-row .btn{flex:1;}
+  label.field{display:block;margin-bottom:14px;}
+  label.field .lbl{display:block;font-size:12px;color:var(--ink-soft);letter-spacing:.3px;margin-bottom:6px;}
+  input[type=text],input[type=number],input[type=date],textarea,select{
+    width:100%;border:1px solid var(--line);border-radius:8px;padding:11px 12px;font-size:15px;
+    background:var(--surface-2);color:var(--ink);font-family:inherit;}
+  input::placeholder,textarea::placeholder{color:var(--ink-soft);opacity:.8;}
+  textarea{min-height:80px;resize:vertical;}
+  .tag{display:inline-block;background:var(--accent-soft);color:var(--accent);border-radius:999px;
+    padding:3px 10px;font-size:12px;font-weight:600;}
+  .tag.good{background:var(--accent-soft);color:var(--good);}
+  .tag.danger{background:var(--danger-soft);color:var(--danger);}
+  .soft{color:var(--ink-soft);font-size:13px;}
+  .empty{text-align:center;padding:40px 20px;color:var(--ink-soft);}
+  .empty b{display:block;color:var(--ink);margin-bottom:6px;font-size:15px;}
+  .seg{display:flex;background:var(--surface-2);border-radius:10px;padding:3px;margin-bottom:14px;}
+  .seg button{flex:1;padding:8px;border:none;background:none;border-radius:7px;font-size:13px;
+    font-weight:600;color:var(--ink-soft);cursor:pointer;}
+  .seg button.active{background:var(--accent);color:var(--accent-ink);}
+  .chips{display:flex;gap:8px;overflow-x:auto;padding:10px 16px;background:var(--surface);
+    border-bottom:1px solid var(--line);position:sticky;top:52px;z-index:4;-webkit-overflow-scrolling:touch;}
+  .chip{flex-shrink:0;padding:8px 14px;border-radius:999px;background:var(--surface-2);font-size:13px;
+    font-weight:600;color:var(--ink-soft);cursor:pointer;white-space:nowrap;}
+  .chip.active{background:var(--accent);color:var(--accent-ink);}
+  .item-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+  .item-row:last-of-type{border-bottom:none;}
+  .checkbox{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--accent);flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);}
+  .checkbox.on{background:var(--accent);color:var(--accent-ink);font-size:13px;}
+  .strike{color:var(--ink-soft);text-decoration:line-through;}
+  .fab-wrap{position:fixed;left:0;right:0;bottom:64px;display:flex;justify-content:center;pointer-events:none;z-index:6;}
+  .fab-wrap .inner{width:100%;max-width:520px;padding:0 16px;pointer-events:auto;}
+  .tabbar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);
+    display:flex;z-index:6;}
+  .tabbar .t{flex:1;text-align:center;padding:9px 0 8px;font-size:12px;color:var(--ink-soft);
+    background:none;border:none;cursor:pointer;font-weight:600;}
+  .tabbar .t.active{color:var(--accent);}
+  .tabbar .t .ic{display:block;font-size:19px;margin-bottom:2px;}
+  .banner{background:var(--danger-soft);border:1px solid var(--danger);border-radius:10px;padding:12px 14px;margin-bottom:14px;
+    font-size:14px;color:var(--danger);}
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:20;display:flex;align-items:flex-end;}
+  .modal-card{background:var(--surface);border-radius:18px 18px 0 0;padding:18px 16px 34px;width:100%;
+    max-width:520px;margin:0 auto;max-height:85vh;overflow-y:auto;border-top:1px solid var(--line);}
+  .thumbs{display:flex;gap:8px;overflow-x:auto;margin:10px 0;}
+  .thumbs img{width:64px;height:64px;object-fit:cover;border-radius:8px;flex-shrink:0;}
+  .link-btn{color:var(--accent);font-weight:600;font-size:14px;background:none;border:none;cursor:pointer;padding:6px 0;}
+  table.totals{width:100%;font-size:14px;}
+  table.totals td{padding:4px 0;}
+  .stat-grid{display:flex;gap:8px;}
+  .stat{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:10px;
+    padding:12px;text-align:center;}
+  .stat .n{font-size:20px;font-weight:700;}
+  .drag-handle{touch-action:none;cursor:grab;color:var(--ink-soft);font-size:20px;flex-shrink:0;
+    padding:8px 8px;user-select:none;-webkit-user-select:none;line-height:1;}
+  .drag-item.dragging{opacity:.85;background:var(--surface-2);border-radius:8px;box-shadow:0 6px 16px rgba(0,0,0,.4);}
+  .icon-btn{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:17px;padding:8px 8px;flex-shrink:0;line-height:1;}
+  .icon-btn.danger-ic{color:var(--danger);}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ===================== 資料層：IndexedDB ===================== */
+const DB_NAME = 'tripCompanionDB';
+const DB_VERSION = 2;
+const STORES = ['trips','templates','templateItems','checklists','checklistItems','entries','entryPhotos','scheduleItems','transports'];
+let dbPromise = null;
+function openDB(){
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      STORES.forEach(name => {
+        if (!db.objectStoreNames.contains(name)) {
+          const store = db.createObjectStore(name, { keyPath: 'id' });
+          if (name !== 'trips' && name !== 'templates') store.createIndex('byParent', 'parentId');
+        }
+      });
+    };
+    req.onsuccess = (e) => resolve(e.target.result);
+    req.onerror = (e) => reject(e.target.error);
+  });
+  return dbPromise;
+}
+function tx(store, mode){ return openDB().then(db => db.transaction(store, mode).objectStore(store)); }
+function idbPut(store, record){ return tx(store,'readwrite').then(s => new Promise((res,rej)=>{
+  const r = s.put(record); r.onsuccess=()=>res(record); r.onerror=()=>rej(r.error);
+})); }
+function idbGet(store, id){ return tx(store,'readonly').then(s => new Promise((res,rej)=>{
+  const r = s.get(id); r.onsuccess=()=>res(r.result||null); r.onerror=()=>rej(r.error);
+})); }
+function idbGetAll(store){ return tx(store,'readonly').then(s => new Promise((res,rej)=>{
+  const r = s.getAll(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error);
+})); }
+function idbGetByParent(store, parentId){ return tx(store,'readonly').then(s => new Promise((res,rej)=>{
+  const idx = s.index('byParent'); const r = idx.getAll(parentId);
+  r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error);
+})); }
+function idbDelete(store, id){ return tx(store,'readwrite').then(s => new Promise((res,rej)=>{
+  const r = s.delete(id); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error);
+})); }
+async function idbDeleteCascade(store, parentId){
+  const items = await idbGetByParent(store, parentId);
+  for (const it of items) await idbDelete(store, it.id);
+}
+
+/* ===================== 工具函式 ===================== */
+function uuid(){ return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{
+  const r = Math.random()*16|0; const v = c==='x'?r:(r&0x3|0x8); return v.toString(16); }); }
+function nowISO(){ return new Date().toISOString(); }
+function currentTimezone(){ try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; }catch(e){ return 'UTC'; } }
+function pad(n){ return String(n).padStart(2,'0'); }
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function formatLocalTime(iso, tz){
+  try{
+    return new Intl.DateTimeFormat('zh-TW',{timeZone:tz,month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(iso));
+  }catch(e){ return iso; }
+}
+function formatDateRange(a,b){
+  function f(d){ const [y,m,dd]=d.split('-'); return y+'/'+m+'/'+dd; }
+  return f(a) + ' - ' + b.slice(5).replace('-','/');
+}
+function daysUntil(dateStr){
+  const a = new Date(todayStr()+'T00:00:00'); const b = new Date(dateStr+'T00:00:00');
+  return Math.round((b-a)/86400000);
+}
+function tripStatus(start,end){
+  const t = todayStr();
+  if (t < start) return 'upcoming';
+  if (t > end) return 'completed';
+  return 'ongoing';
+}
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function nl2li(text){ return text.split('\n').map(s=>s.trim()).filter(Boolean); }
+
+const TYPE_LABEL = {travel:'旅遊', business:'出差', custom:'自訂'};
+const STATUS_LABEL = {upcoming:'即將出發', ongoing:'進行中', completed:'已結束'};
+const CATEGORY_LABEL = {packing:'打包清單', todo:'待辦', sop:'SOP流程', shopping:'待買物品'};
+const ENTRY_TYPE_LABEL = {note:'筆記', todo:'待辦', expense:'費用', photo:'照片'};
+const ENTRY_TYPE_ICON = {note:'📝', todo:'☑️', expense:'💰', photo:'📷'};
+const TRANSPORT_LABEL = {flight:'飛機', taxi:'計程車', train:'火車', hsr:'高鐵'};
+const TRANSPORT_ICON = {flight:'✈️', taxi:'🚕', train:'🚆', hsr:'🚄'};
+const COMMON_TZ = ['Asia/Taipei','Asia/Tokyo','Asia/Seoul','Asia/Shanghai','Asia/Hong_Kong','Asia/Singapore','Asia/Bangkok','America/Los_Angeles','America/New_York','Europe/London','Europe/Paris','Australia/Sydney'];
+function formatDateTimeLocal(v){
+  const m = String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return v||'';
+  return m[2]+'/'+m[3]+' '+m[4]+':'+m[5];
+}
+
+/* ===================== 圖片壓縮工具 ===================== */
+function fileToCompressedDataURL(file, maxDim=1280, quality=0.7){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ===================== 路由 ===================== */
+function go(hash){ location.hash = hash; }
+window.addEventListener('hashchange', render);
+window.addEventListener('DOMContentLoaded', render);
+
+function parseHash(){
+  const h = location.hash.slice(1) || '/trips';
+  const parts = h.split('/').filter(Boolean);
+  return parts;
+}
+
+async function render(){
+  const parts = parseHash();
+  const app = document.getElementById('app');
+  try{
+    if (parts[0] === 'trips' && !parts[1]) app.innerHTML = await viewTripsList();
+    else if (parts[0] === 'trip' && parts[1] === 'new') app.innerHTML = await viewTripForm();
+    else if (parts[0] === 'trip' && parts[2] === 'checklist') app.innerHTML = await viewChecklistDetail(parts[1], parts[3]);
+    else if (parts[0] === 'trip' && parts[2] === 'entry' && parts[3] === 'new') app.innerHTML = await viewEntryForm(parts[1], parts[4]);
+    else if (parts[0] === 'trip' && parts[1]) app.innerHTML = await viewTripDetail(parts[1], parts[2] || 'overview');
+    else if (parts[0] === 'templates' && !parts[1]) app.innerHTML = await viewTemplatesList();
+    else if (parts[0] === 'template' && parts[1] === 'new') app.innerHTML = await viewTemplateForm();
+    else if (parts[0] === 'template' && parts[1]) app.innerHTML = await viewTemplateForm(parts[1]);
+    else app.innerHTML = await viewTripsList();
+  }catch(err){
+    app.innerHTML = '<div class="page"><div class="card"><b>發生錯誤</b><div class="soft">'+escapeHtml(String(err))+'</div></div></div>';
+    console.error(err);
+  }
+  bindActions();
+  bindDragReorder();
+}
+
+/* ===================== 拖曳排序 ===================== */
+function bindDragReorder(){
+  document.querySelectorAll('[data-drag-list]').forEach(list=>{
+    const store = list.dataset.dragList;
+    list.querySelectorAll('[data-drag-handle]').forEach(handle=>{
+      handle.onpointerdown = (e) => startDragReorder(e, handle, list, store);
+    });
+  });
+}
+function startDragReorder(e, handle, list, store){
+  e.preventDefault();
+  const item = handle.closest('[data-drag-item]');
+  if (!item) return;
+  const pointerId = e.pointerId;
+  try{ item.setPointerCapture(pointerId); }catch(err){}
+  item.classList.add('dragging');
+  let startY = e.clientY;
+  function onMove(ev){
+    if (ev.pointerId !== pointerId) return;
+    const dy = ev.clientY - startY;
+    item.style.transform = 'translateY('+dy+'px)';
+    const siblings = Array.from(list.querySelectorAll('[data-drag-item]'));
+    const idx = siblings.indexOf(item);
+    const rect = item.getBoundingClientRect();
+    const mid = rect.top + rect.height/2;
+    for (let j=0;j<siblings.length;j++){
+      const sib = siblings[j];
+      if (sib === item) continue;
+      const r = sib.getBoundingClientRect();
+      const sibMid = r.top + r.height/2;
+      if (j < idx && mid < sibMid){
+        list.insertBefore(item, sib);
+        startY = ev.clientY; item.style.transform = 'translateY(0px)';
+        break;
+      } else if (j > idx && mid > sibMid){
+        list.insertBefore(sib, item);
+        startY = ev.clientY; item.style.transform = 'translateY(0px)';
+        break;
+      }
+    }
+  }
+  async function onUp(ev){
+    if (ev.pointerId !== pointerId) return;
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    item.classList.remove('dragging');
+    item.style.transform = '';
+    try{ item.releasePointerCapture(pointerId); }catch(err){}
+    const ids = Array.from(list.querySelectorAll('[data-drag-item]')).map(el=>el.dataset.id);
+    try{ await persistDragOrder(store, ids); }
+    catch(err){ console.error(err); }
+    render();
+  }
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+}
+async function persistDragOrder(store, ids){
+  for (let i=0;i<ids.length;i++){
+    const rec = await idbGet(store, ids[i]);
+    if (!rec) continue;
+    rec.order = i;
+    await idbPut(store, rec);
+  }
+}
+
+function tabbar(active){
+  return '<div class="tabbar">'
+    + '<button class="t '+(active==='trips'?'active':'')+'" data-action="nav" data-hash="/trips"><span class="ic">🧭</span>行程</button>'
+    + '<button class="t '+(active==='templates'?'active':'')+'" data-action="nav" data-hash="/templates"><span class="ic">📋</span>模板</button>'
+    + '</div>';
+}
+
+/* ===================== 事件委派 ===================== */
+function bindActions(){
+  const app = document.getElementById('app');
+  app.onclick = async (e) => {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const action = el.dataset.action;
+    const id = el.dataset.id;
+    const id2 = el.dataset.id2;
+    try{
+      await handleAction(action, id, id2, el);
+    }catch(err){ console.error(err); alert('操作失敗：' + err.message); }
+  };
+  app.onchange = async (e) => {
+    if (e.target.matches('input[type=file][data-photoinput]')) {
+      await handlePhotoInput(e.target);
+    }
+  };
+  app.onsubmit = async (e) => {
+    const form = e.target.closest('[data-checklist-add]');
+    if (!form) return;
+    e.preventDefault();
+    try{ await addChecklistItem(form.dataset.id); }
+    catch(err){ console.error(err); alert('操作失敗：'+err.message); }
+  };
+}
+
+let draftPhotos = [];
+
+async function handlePhotoInput(input){
+  const files = Array.from(input.files || []);
+  for (const f of files){
+    try{ draftPhotos.push(await fileToCompressedDataURL(f)); }catch(e){ console.error(e); }
+  }
+  input.value = '';
+  renderDraftThumbs();
+}
+function renderDraftThumbs(){
+  const box = document.getElementById('draftThumbs');
+  if (!box) return;
+  box.innerHTML = draftPhotos.map((src,i)=>'<img src="'+src+'" data-action="removeDraftPhoto" data-id="'+i+'">').join('');
+}
+
+async function handleAction(action, id, id2, el){
+  if (action === 'nav'){ go(el.dataset.hash); return; }
+  if (action === 'removeDraftPhoto'){ draftPhotos.splice(Number(id),1); renderDraftThumbs(); return; }
+  if (action === 'segToggle'){
+    el.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+    el.classList.add('active');
+    return;
+  }
+
+  if (action === 'newTrip'){ go('/trip/new'); return; }
+  if (action === 'saveTrip'){ await saveTripForm(); return; }
+  if (action === 'deleteTrip'){
+    if (!confirm('刪除這個行程？所有清單、記錄與照片都會一併刪除，此動作無法復原。')) return;
+    await deleteTripCascade(id); go('/trips'); return;
+  }
+  if (action === 'setTripTab'){ go('/trip/'+id+'/'+id2); return; }
+
+  if (action === 'openTemplatePicker'){ await openTemplatePicker(id); return; }
+  if (action === 'openSopPicker'){ await openSopPicker(id); return; }
+  if (action === 'closeModal'){ closeModal(); return; }
+  if (action === 'applyTemplate'){ const cl = await applyTemplateToTrip(id, id2); if (!cl) return; closeModal(); go('/trip/'+id+'/checklist/'+cl.id); return; }
+  if (action === 'createBlankChecklist'){ const cl = await createBlankChecklist(id, id2); if (!cl) return; closeModal(); go('/trip/'+id+'/checklist/'+cl.id); return; }
+  if (action === 'renameChecklist'){ await renameChecklist(id); return; }
+  if (action === 'deleteChecklist'){
+    if (!confirm('刪除這份清單？')) return;
+    await idbDeleteCascade('checklistItems', id); await idbDelete('checklists', id); go('/trip/'+id2+'/checklists'); return;
+  }
+  if (action === 'toggleChecklistItem'){ await toggleChecklistItem(id); render(); return; }
+  if (action === 'deleteChecklistItem'){ await deleteChecklistItem(id, id2); return; }
+  if (action === 'editChecklistItem'){ await editChecklistItem(id); return; }
+  if (action === 'editScheduleItem'){ await editScheduleItem(id); return; }
+  if (action === 'addChecklistItem'){ await addChecklistItem(id); return; }
+  if (action === 'saveChecklistAsTemplate'){ await saveChecklistAsTemplate(id); alert('已存回模板'); return; }
+
+  if (action === 'newEntry'){ go('/trip/'+id+'/entry/new'+(id2?'/'+id2:'')); return; }
+  if (action === 'setEntryMode'){ setEntryMode(id); return; }
+  if (action === 'takePhoto'){ document.getElementById('cameraInput').click(); return; }
+  if (action === 'pickPhotos'){ document.getElementById('libraryInput').click(); return; }
+  if (action === 'saveEntry'){ await saveEntryForm(id); return; }
+  if (action === 'setEntryFilter'){ go('/trip/'+id+'/entries/'+id2); return; }
+  if (action === 'toggleEntryDone'){ await toggleEntryDone(id); render(); return; }
+  if (action === 'openEntryEdit'){ openEntryEditModal(id); return; }
+  if (action === 'saveEntryEdit'){ await saveEntryEdit(id); return; }
+  if (action === 'deleteEntry'){
+    if (!confirm('刪除這筆記錄？')) return;
+    await idbDeleteCascade('entryPhotos', id); await idbDelete('entries', id); closeModal(); render(); return;
+  }
+
+  if (action === 'addReminder'){ await addReminder(id, Number(id2)); return; }
+  if (action === 'removeReminder'){ await removeReminder(id); render(); return; }
+  if (action === 'openTimezonePicker'){
+    const trip = await idbGet('trips', id);
+    openTimezonePicker(id, trip.tzManual ? trip.timezone : currentTimezone());
+    return;
+  }
+  if (action === 'setTripTimezone'){ await setTripTimezone(id, decodeURIComponent(id2)); return; }
+  if (action === 'setTripTimezoneCustom'){ await setTripTimezoneCustom(id); return; }
+  if (action === 'clearTripTimezone'){ await clearTripTimezone(id); return; }
+  if (action === 'openTransportModal'){ await openTransportModal(id, id2||null); return; }
+  if (action === 'saveTransport'){ await saveTransport(id, id2||null); return; }
+  if (action === 'deleteTransport'){ await deleteTransport(id); return; }
+
+  if (action === 'addScheduleStart'){ showScheduleAdder(id); return; }
+  if (action === 'saveScheduleItem'){ await saveScheduleItem(id); return; }
+  if (action === 'deleteScheduleItem'){
+    if (!confirm('刪除這個安排？')) return;
+    await idbDelete('scheduleItems', id); render(); return;
+  }
+
+  if (action === 'saveAsTemplateFromReview'){ await saveChecklistAsTemplate(id); alert('已回寫模板'); return; }
+
+  if (action === 'newTemplate'){ go('/template/new'); return; }
+  if (action === 'saveTemplate'){ await saveTemplateForm(id); return; }
+  if (action === 'deleteTemplate'){
+    if (!confirm('刪除這個模板？已套用到行程中的清單不會受影響。')) return;
+    await idbDeleteCascade('templateItems', id); await idbDelete('templates', id); go('/templates'); return;
+  }
+}
+
+function closeModal(){ const m = document.getElementById('modalRoot'); if (m) m.remove(); }
+function openModal(html){
+  closeModal();
+  const div = document.createElement('div');
+  div.id = 'modalRoot';
+  div.className = 'modal-backdrop';
+  div.innerHTML = '<div class="modal-card">'+html+'</div>';
+  div.addEventListener('click', (e)=>{ if (e.target === div) closeModal(); });
+  document.body.appendChild(div);
+  bindModalEvents();
+}
+function bindModalEvents(){
+  const root = document.getElementById('modalRoot');
+  if (!root) return;
+  root.onclick = async (e) => {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    try{ await handleAction(el.dataset.action, el.dataset.id, el.dataset.id2, el); }
+    catch(err){ console.error(err); alert('操作失敗：'+err.message); }
+  };
+}
+
+/* ===================== 行程 ===================== */
+async function viewTripsList(){
+  const trips = await idbGetAll('trips');
+  trips.sort((a,b)=>{
+    const rank = t => tripStatus(t.startDate,t.endDate)==='ongoing'?0:tripStatus(t.startDate,t.endDate)==='upcoming'?1:2;
+    return rank(a)-rank(b) || a.startDate.localeCompare(b.startDate);
+  });
+  let list = trips.map(t=>{
+    const st = tripStatus(t.startDate, t.endDate);
+    const tone = st==='ongoing'?'good':st==='completed'?'danger':'';
+    return '<div class="card" data-action="nav" data-hash="/trip/'+t.id+'" style="cursor:pointer">'
+      + '<div class="row"><h3 style="font-size:16px">'+escapeHtml(t.name)+'</h3><span class="tag '+tone+'">'+STATUS_LABEL[st]+'</span></div>'
+      + '<div class="soft">'+TYPE_LABEL[t.type]+' · '+escapeHtml(t.location||'未填地點')+'</div>'
+      + '<div class="soft">'+formatDateRange(t.startDate,t.endDate)+'</div>'
+      + '</div>';
+  }).join('');
+  if (!trips.length) list = '<div class="empty"><b>還沒有任何行程</b>點下方「新增行程」開始規劃你的第一次旅遊或出差。</div>';
+  return '<div class="topbar"><h1>行程夥伴</h1></div>'
+    + '<div class="page">' + list + '</div>'
+    + '<div class="fab-wrap"><div class="inner"><button class="btn" data-action="newTrip">＋ 新增行程</button></div></div>'
+    + tabbar('trips');
+}
+
+async function viewTripForm(){
+  return '<div class="topbar"><button class="back" data-action="nav" data-hash="/trips">‹</button><h1>新增行程</h1></div>'
+    + '<div class="page">'
+    + '<label class="field"><span class="lbl">行程名稱</span><input type="text" id="f_name" placeholder="例如：東京出差 / 大阪家族旅行"></label>'
+    + '<label class="field"><span class="lbl">類型</span>'
+    + '<div class="seg" id="f_type_seg">'
+    + '<button data-t="travel" data-action="segToggle" class="active">旅遊</button><button data-t="business" data-action="segToggle">出差</button><button data-t="custom" data-action="segToggle">自訂</button>'
+    + '</div></label>'
+    + '<label class="field"><span class="lbl">出發日期</span><input type="date" id="f_start"></label>'
+    + '<label class="field"><span class="lbl">結束日期</span><input type="date" id="f_end"></label>'
+    + '<label class="field"><span class="lbl">主要地點</span><input type="text" id="f_location" placeholder="例如：日本東京"></label>'
+    + '<button class="btn" data-action="saveTrip">建立行程</button>'
+    + '</div>';
+}
+async function saveTripForm(){
+  const name = document.getElementById('f_name').value.trim();
+  if (!name) return alert('請輸入行程名稱');
+  const type = document.querySelector('#f_type_seg button.active').dataset.t;
+  const start = document.getElementById('f_start').value;
+  const end = document.getElementById('f_end').value;
+  if (!start || !end) return alert('請選擇出發與結束日期');
+  const location = document.getElementById('f_location').value.trim();
+  const trip = { id: uuid(), name, type, startDate:start, endDate:end, location,
+    timezone: currentTimezone(), createdAt: nowISO(), updatedAt: nowISO() };
+  await idbPut('trips', trip);
+  go('/trip/'+trip.id);
+}
+async function deleteTripCascade(tripId){
+  const checklists = await idbGetByParent('checklists', tripId);
+  for (const c of checklists) await idbDeleteCascade('checklistItems', c.id);
+  await idbDeleteCascade('checklists', tripId);
+  const entries = await idbGetByParent('entries', tripId);
+  for (const e of entries) await idbDeleteCascade('entryPhotos', e.id);
+  await idbDeleteCascade('entries', tripId);
+  await idbDeleteCascade('scheduleItems', tripId);
+  await idbDeleteCascade('transports', tripId);
+  await idbDelete('trips', tripId);
+}
+
+/* ===================== 行程detail + 分頁 ===================== */
+async function viewTripDetail(tripId, tab){
+  const trip = await idbGet('trips', tripId);
+  if (!trip) return '<div class="page"><div class="empty">找不到這個行程</div></div>' + tabbar('trips');
+  const chips = ['overview','checklists','entries','expenses','timeline','review'];
+  const chipLabel = {overview:'總覽',checklists:'清單',entries:'記錄',expenses:'花費',timeline:'時間軸',review:'回顧'};
+  const chipHtml = chips.map(c=>'<div class="chip '+(tab===c||(tab.startsWith('entries')&&c==='entries')?'active':'')+'" data-action="setTripTab" data-id="'+tripId+'" data-id2="'+c+'">'+chipLabel[c]+'</div>').join('');
+  let body = '';
+  if (tab === 'overview') body = await tabOverview(trip);
+  else if (tab === 'checklists') body = await tabChecklists(trip);
+  else if (tab.startsWith('entries')) body = await tabEntries(trip, tab.split('/')[1] || 'all');
+  else if (tab === 'expenses') body = await tabExpenses(trip);
+  else if (tab === 'timeline') body = await tabTimeline(trip);
+  else if (tab === 'review') body = await tabReview(trip);
+  else body = await tabOverview(trip);
+  return '<div class="topbar"><button class="back" data-action="nav" data-hash="/trips">‹</button><h1>'+escapeHtml(trip.name)+'</h1></div>'
+    + '<div class="chips">'+chipHtml+'</div>'
+    + '<div class="page">'+body+'</div>'
+    + tabbar('trips');
+}
+
+async function tabOverview(trip){
+  const st = tripStatus(trip.startDate, trip.endDate);
+  const tone = st==='ongoing'?'good':st==='completed'?'danger':'';
+  const dLeft = daysUntil(trip.startDate);
+  const reminders = (await idbGetByParent('scheduleItems','__reminder__'+trip.id)) || [];
+  // reminders stored separately below via idbGetAll filter since scheduleItems reused would conflict; use trip.reminders field instead
+  const rem = trip.reminders || [];
+  let banner = '';
+  if (st === 'upcoming' && dLeft <= 3 && dLeft >= 0){
+    const checklists = await idbGetByParent('checklists', trip.id);
+    let incomplete = 0;
+    for (const c of checklists){
+      if (c.category === 'sop') continue;
+      const items = await idbGetByParent('checklistItems', c.id);
+      incomplete += items.filter(i=>!i.checked).length;
+    }
+    if (incomplete > 0){
+      banner = '<div class="banner">⏰ 出發前還有 '+dLeft+' 天，行前清單還有 '+incomplete+' 項未完成，記得檢查一下。</div>';
+    }
+  }
+  const remHtml = rem.length ? rem.map(r=>'<div class="row" style="margin-bottom:8px"><span>'+escapeHtml(r.label)+'</span>'
+    + '<button class="btn small secondary" data-action="removeReminder" data-id="'+trip.id+'|'+r.id+'">取消</button></div>').join('')
+    : '<div class="soft" style="margin-bottom:8px">還沒有設定提醒</div>';
+  const displayTz = trip.tzManual ? trip.timezone : currentTimezone();
+  const tzTag = trip.tzManual ? '<span class="tag">手動設定</span>' : '<span class="tag good">自動偵測</span>';
+  const transports = (await idbGetByParent('transports', trip.id));
+  transports.sort((a,b)=> (a.time||'').localeCompare(b.time||'') || (a.order??0)-(b.order??0));
+  const transportRows = transports.length ? transports.map(t=>
+    '<div class="row" style="padding:8px 0;cursor:pointer;border-bottom:1px solid var(--line)" data-action="openTransportModal" data-id="'+trip.id+'" data-id2="'+t.id+'">'
+    + '<div><div>'+(TRANSPORT_ICON[t.type]||'')+' '+(TRANSPORT_LABEL[t.type]||'')+(t.number?'　'+escapeHtml(t.number):'')+'</div>'
+    + '<div class="soft">'+(t.time? formatDateTimeLocal(t.time) : '未填時間')+(t.note?'　'+escapeHtml(t.note):'')+'</div></div>'
+    + '</div>'
+  ).join('') : '<div class="soft" style="margin-bottom:8px">還沒有交通資訊</div>';
+  return banner
+    + '<div class="card">'
+    + '<div class="row"><span class="tag">'+TYPE_LABEL[trip.type]+'</span><span class="tag '+tone+'">'+STATUS_LABEL[st]+'</span></div>'
+    + '<h2 style="margin-top:10px;font-size:20px">'+escapeHtml(trip.name)+'</h2>'
+    + '<div class="soft" style="margin-top:4px">'+escapeHtml(trip.location||'未填地點')+'</div>'
+    + '<div class="soft">'+formatDateRange(trip.startDate,trip.endDate)+'</div>'
+    + '<div class="soft" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px">時區：'+displayTz+' '+tzTag
+    + '<button class="link-btn" style="padding:2px 0" data-action="openTimezonePicker" data-id="'+trip.id+'">校正</button></div>'
+    + (st==='upcoming' ? '<div style="margin-top:8px;font-weight:600">還有 '+dLeft+' 天出發</div>' : '')
+    + '</div>'
+    + '<div class="row" style="margin:16px 0 8px"><span class="soft">交通資訊</span>'
+    + '<button class="link-btn" data-action="openTransportModal" data-id="'+trip.id+'">＋ 新增</button></div>'
+    + '<div class="card">'+transportRows+'</div>'
+    + '<div class="soft" style="margin:16px 0 8px">行前提醒（打開App時顯示，越接近出發日提示越明顯）</div>'
+    + remHtml
+    + '<div class="btn-row" style="margin-bottom:20px">'
+    + '<button class="btn secondary" data-action="addReminder" data-id="'+trip.id+'" data-id2="1">出發前1天</button>'
+    + '<button class="btn secondary" data-action="addReminder" data-id="'+trip.id+'" data-id2="3">出發前3天</button>'
+    + '</div>'
+    + '<button class="btn danger" data-action="deleteTrip" data-id="'+trip.id+'">刪除這個行程</button>';
+}
+function openTimezonePicker(tripId, currentTz){
+  const chips = COMMON_TZ.map(z=>'<button class="chip" style="margin:3px 3px 3px 0" data-action="setTripTimezone" data-id="'+tripId+'" data-id2="'+encodeURIComponent(z)+'">'+z.split('/')[1].replace(/_/g,' ')+'</button>').join('');
+  openModal('<h2>校正時區</h2>'
+    + '<div class="soft" style="margin:8px 0">出發前系統會自動用裝置目前的時區顯示，如果判斷錯誤，可以在這裡手動指定；之後如果換了地方，也可以隨時再改回自動偵測。</div>'
+    + '<div style="display:flex;flex-wrap:wrap">'+chips+'</div>'
+    + '<div style="display:flex;gap:8px;margin-top:14px">'
+    + '<input type="text" id="customTz" placeholder="例如：Asia/Taipei" style="flex:1" value="'+escapeHtml(currentTz||'')+'">'
+    + '<button class="btn secondary" style="width:auto;flex:0 0 auto" data-action="setTripTimezoneCustom" data-id="'+tripId+'">套用</button>'
+    + '</div>'
+    + '<div style="margin-top:14px;display:flex;gap:8px">'
+    + '<button class="btn secondary" style="flex:1" data-action="clearTripTimezone" data-id="'+tripId+'">恢復自動偵測</button>'
+    + '<button class="btn secondary" style="flex:1" data-action="closeModal">關閉</button>'
+    + '</div>');
+}
+async function setTripTimezone(tripId, tz){
+  const trip = await idbGet('trips', tripId);
+  trip.timezone = tz; trip.tzManual = true;
+  await idbPut('trips', trip);
+  closeModal(); render();
+}
+async function setTripTimezoneCustom(tripId){
+  const val = document.getElementById('customTz').value.trim();
+  if (!val) return;
+  try{ Intl.DateTimeFormat('en-US', {timeZone: val}); }
+  catch(e){ alert('無法辨識這個時區名稱，請確認格式（例如 Asia/Taipei）'); return; }
+  await setTripTimezone(tripId, val);
+}
+async function clearTripTimezone(tripId){
+  const trip = await idbGet('trips', tripId);
+  trip.tzManual = false;
+  await idbPut('trips', trip);
+  closeModal(); render();
+}
+async function openTransportModal(tripId, transportId){
+  let t = { type:'flight', time:'', number:'', note:'' };
+  if (transportId) t = await idbGet('transports', transportId);
+  const typeChips = Object.keys(TRANSPORT_LABEL).map(k=>
+    '<button class="chip '+(t.type===k?'active':'')+'" data-action="segToggle" data-t="'+k+'">'+TRANSPORT_ICON[k]+' '+TRANSPORT_LABEL[k]+'</button>'
+  ).join('');
+  openModal('<h2>'+(transportId?'編輯交通資訊':'新增交通資訊')+'</h2>'
+    + '<div id="transportTypeSeg" style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0">'+typeChips+'</div>'
+    + '<label class="field"><span class="lbl">時間</span><input type="datetime-local" id="tr_time" value="'+escapeHtml(t.time||'')+'"></label>'
+    + '<label class="field"><span class="lbl">班次／車次／車輛資訊</span><input type="text" id="tr_number" value="'+escapeHtml(t.number||'')+'" placeholder="例如：CI101、高鐵123、計程車預約單號"></label>'
+    + '<label class="field"><span class="lbl">備註（選填）</span><input type="text" id="tr_note" value="'+escapeHtml(t.note||'')+'"></label>'
+    + '<button class="btn" data-action="saveTransport" data-id="'+tripId+'" data-id2="'+(transportId||'')+'">儲存</button>'
+    + (transportId ? '<button class="btn danger" style="margin-top:8px" data-action="deleteTransport" data-id="'+transportId+'">刪除</button>' : '')
+    + '<button class="btn secondary" style="margin-top:8px" data-action="closeModal">取消</button>');
+}
+async function saveTransport(tripId, transportId){
+  const activeChip = document.querySelector('#transportTypeSeg .active');
+  const type = activeChip ? activeChip.dataset.t : 'flight';
+  const time = document.getElementById('tr_time').value;
+  const number = document.getElementById('tr_number').value.trim();
+  const note = document.getElementById('tr_note').value.trim();
+  if (!time && !number){ alert('請至少填寫時間或班次資訊'); return; }
+  if (transportId){
+    const t = await idbGet('transports', transportId);
+    t.type=type; t.time=time; t.number=number; t.note=note;
+    await idbPut('transports', t);
+  } else {
+    const existing = await idbGetByParent('transports', tripId);
+    const maxOrder = existing.reduce((m,i)=>Math.max(m, i.order??0), -1);
+    await idbPut('transports', { id: uuid(), parentId: tripId, tripId, type, time, number, note, order: maxOrder+1 });
+  }
+  closeModal(); render();
+}
+async function deleteTransport(transportId){
+  if (!confirm('刪除這筆交通資訊？')) return;
+  await idbDelete('transports', transportId);
+  closeModal(); render();
+}
+async function addReminder(tripId, daysBefore){
+  const trip = await idbGet('trips', tripId);
+  trip.reminders = trip.reminders || [];
+  trip.reminders.push({ id: uuid(), label: '出發前'+daysBefore+'天', daysBefore });
+  await idbPut('trips', trip);
+  render();
+}
+async function removeReminder(compound){
+  const [tripId, remId] = compound.split('|');
+  const trip = await idbGet('trips', tripId);
+  trip.reminders = (trip.reminders||[]).filter(r=>r.id!==remId);
+  await idbPut('trips', trip);
+}
+
+/* ---- 清單 ---- */
+async function tabChecklists(trip){
+  const all = await idbGetByParent('checklists', trip.id);
+  const checklists = all.filter(c=>c.category!=='sop');
+  const sops = all.filter(c=>c.category==='sop');
+  let rows = '';
+  for (const c of checklists){
+    const items = await idbGetByParent('checklistItems', c.id);
+    const done = items.filter(i=>i.checked).length;
+    const tone = items.length && done===items.length ? 'good':'';
+    rows += '<div class="card" style="cursor:pointer" data-action="nav" data-hash="/trip/'+trip.id+'/checklist/'+c.id+'">'
+      + '<div class="row"><div><div>'+escapeHtml(c.name)+'</div><div class="soft">'+CATEGORY_LABEL[c.category]+'</div></div>'
+      + '<span class="tag '+tone+'">'+done+'/'+items.length+'</span></div></div>';
+  }
+  if (!checklists.length) rows = '<div class="empty"><b>這個行程還沒有清單</b>套用一份模板，或建立一份新的空白清單。</div>';
+
+  let sopRows = '';
+  for (const c of sops){
+    const items = await idbGetByParent('checklistItems', c.id);
+    sopRows += '<div class="card" style="cursor:pointer" data-action="nav" data-hash="/trip/'+trip.id+'/checklist/'+c.id+'">'
+      + '<div class="row"><div><div>📖 '+escapeHtml(c.name)+'</div><div class="soft">SOP流程參考</div></div>'
+      + '<span class="tag">'+items.length+' 個步驟</span></div></div>';
+  }
+  if (!sops.length) sopRows = '<div class="empty"><b>還沒有任何SOP流程</b>可以建立一份，方便之後查詢某件事情該怎麼處理。</div>';
+
+  return rows
+    + '<button class="btn secondary" data-action="openTemplatePicker" data-id="'+trip.id+'">＋ 套用模板或建立新清單</button>'
+    + '<div style="margin-top:28px;margin-bottom:10px" class="soft"><b style="color:var(--ink)">SOP 流程</b>　— 查詢某些事情該怎麼做，不是打勾用的清單</div>'
+    + sopRows
+    + '<button class="btn secondary" data-action="openSopPicker" data-id="'+trip.id+'">＋ 建立SOP流程</button>';
+}
+async function openTemplatePicker(tripId){
+  const templates = (await idbGetAll('templates')).filter(t=>t.category!=='sop');
+  const tplHtml = templates.length ? templates.map(t=>
+    '<div class="row" style="padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer" data-action="applyTemplate" data-id="'+tripId+'" data-id2="'+t.id+'">'
+    + '<span>'+escapeHtml(t.name)+'</span><span class="tag">'+CATEGORY_LABEL[t.category]+'</span></div>'
+  ).join('') : '<div class="soft" style="padding:10px 0">還沒有任何模板，可以先建立空白清單。</div>';
+  const blankChips = ['packing','todo','shopping'].map(cat=>
+    '<button class="btn small secondary" data-action="createBlankChecklist" data-id="'+tripId+'" data-id2="'+cat+'">'+CATEGORY_LABEL[cat]+'</button>'
+  ).join(' ');
+  openModal('<h2>選擇模板</h2><div style="max-height:280px;overflow-y:auto;margin-top:8px">'+tplHtml+'</div>'
+    + '<div class="soft" style="margin-top:16px;margin-bottom:8px">或建立空白清單</div>'
+    + '<div class="btn-row" style="flex-wrap:wrap">'+blankChips+'</div>'
+    + '<div style="margin-top:16px"><button class="btn secondary" data-action="closeModal">關閉</button></div>');
+}
+async function openSopPicker(tripId){
+  const templates = (await idbGetAll('templates')).filter(t=>t.category==='sop');
+  const tplHtml = templates.length ? templates.map(t=>
+    '<div class="row" style="padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer" data-action="applyTemplate" data-id="'+tripId+'" data-id2="'+t.id+'">'
+    + '<span>📖 '+escapeHtml(t.name)+'</span></div>'
+  ).join('') : '<div class="soft" style="padding:10px 0">還沒有任何SOP模板。</div>';
+  openModal('<h2>建立SOP流程</h2><div style="max-height:280px;overflow-y:auto;margin-top:8px">'+tplHtml+'</div>'
+    + '<div style="margin-top:16px"><button class="btn secondary" data-action="createBlankChecklist" data-id="'+tripId+'" data-id2="sop">＋ 建立新的SOP流程</button></div>'
+    + '<div style="margin-top:10px"><button class="btn secondary" data-action="closeModal">關閉</button></div>');
+}
+async function applyTemplateToTrip(tripId, templateId){
+  const template = await idbGet('templates', templateId);
+  const suggested = template.name;
+  const name = prompt('這份清單的名稱：', suggested);
+  if (name === null) return null;
+  const items = await idbGetByParent('templateItems', templateId);
+  const checklist = { id: uuid(), parentId: tripId, tripId, templateId, name: (name.trim()||suggested), category: template.category, createdAt: nowISO() };
+  await idbPut('checklists', checklist);
+  for (const it of items){
+    await idbPut('checklistItems', { id: uuid(), parentId: checklist.id, checklistId: checklist.id, text: it.text, checked: false });
+  }
+  return checklist;
+}
+async function createBlankChecklist(tripId, category){
+  const suggested = CATEGORY_LABEL[category];
+  const name = prompt('這份'+(category==='sop'?'SOP流程':'清單')+'的名稱：', suggested);
+  if (name === null) return null;
+  const checklist = { id: uuid(), parentId: tripId, tripId, templateId: null, name: (name.trim()||suggested), category, createdAt: nowISO() };
+  await idbPut('checklists', checklist);
+  return checklist;
+}
+async function renameChecklist(checklistId){
+  const checklist = await idbGet('checklists', checklistId);
+  const name = prompt('新的名稱：', checklist.name);
+  if (name === null || !name.trim()) return;
+  checklist.name = name.trim();
+  await idbPut('checklists', checklist);
+  render();
+}
+async function viewChecklistDetail(tripId, checklistId){
+  const checklist = await idbGet('checklists', checklistId);
+  const items = await idbGetByParent('checklistItems', checklistId);
+  items.sort((a,b)=> (a.order??0) - (b.order??0));
+  const isSop = checklist.category === 'sop';
+  let progressLine, rows;
+  if (isSop){
+    progressLine = '<div class="soft">共 '+items.length+' 個步驟 · 供查詢參考，不需要打勾 · 按住⠿可拖曳排序</div>';
+    rows = '<div data-drag-list="checklistItems">' + items.map((i,idx)=>
+      '<div class="item-row drag-item" data-drag-item data-id="'+i.id+'">'
+      + '<span class="drag-handle" data-drag-handle>⠿</span>'
+      + '<div class="checkbox" style="background:var(--accent-soft);color:var(--accent);border-color:var(--accent-soft);font-size:12px;font-weight:700">'+(idx+1)+'</div>'
+      + '<div style="flex:1">'+escapeHtml(i.text)+'</div>'
+      + '<button class="icon-btn" data-action="editChecklistItem" data-id="'+i.id+'">✎</button>'
+      + '<button class="icon-btn danger-ic" data-action="deleteChecklistItem" data-id="'+i.id+'" data-id2="'+checklistId+'">✕</button>'
+      + '</div>'
+    ).join('') + '</div>';
+  } else {
+    const done = items.filter(i=>i.checked).length;
+    progressLine = '<div class="soft">'+done+'/'+items.length+' 已完成</div>';
+    rows = items.map(i=>
+      '<div class="item-row">'
+      + '<div class="checkbox '+(i.checked?'on':'')+'" data-action="toggleChecklistItem" data-id="'+i.id+'" style="cursor:pointer">'+(i.checked?'✓':'')+'</div>'
+      + '<div class="'+(i.checked?'strike':'')+'" data-action="toggleChecklistItem" data-id="'+i.id+'" style="cursor:pointer;flex:1">'+escapeHtml(i.text)+'</div>'
+      + '<button class="icon-btn" data-action="editChecklistItem" data-id="'+i.id+'">✎</button>'
+      + '<button class="icon-btn danger-ic" data-action="deleteChecklistItem" data-id="'+i.id+'" data-id2="'+checklistId+'">✕</button>'
+      + '</div>'
+    ).join('');
+  }
+  return '<div class="topbar"><button class="back" data-action="nav" data-hash="/trip/'+tripId+'/checklists">‹</button>'
+    + '<h1>'+(isSop?'📖 ':'')+escapeHtml(checklist.name)+'</h1>'
+    + '<button class="link-btn" style="margin-left:auto" data-action="renameChecklist" data-id="'+checklistId+'">重新命名</button>'
+    + '</div>'
+    + '<div class="page">'
+    + progressLine
+    + rows
+    + '<form data-checklist-add data-id="'+checklistId+'" style="display:flex;gap:8px;margin-top:10px">'
+    + '<input type="text" id="newItemText" placeholder="'+(isSop?'新增步驟':'新增項目')+'" style="flex:1;min-width:0" enterkeyhint="done">'
+    + '<button type="submit" class="btn secondary" style="width:auto;flex:0 0 auto;white-space:nowrap">新增</button>'
+    + '</form>'
+    + '<div style="margin-top:16px;display:flex;gap:8px">'
+    + '<button class="btn secondary" style="flex:1" data-action="saveChecklistAsTemplate" data-id="'+checklistId+'">存回模板</button>'
+    + '<button class="btn danger" style="flex:1" data-action="deleteChecklist" data-id="'+checklistId+'" data-id2="'+tripId+'">刪除'+(isSop?'SOP流程':'清單')+'</button>'
+    + '</div>'
+    + '</div>';
+}
+async function deleteChecklistItem(itemId, checklistId){
+  await idbDelete('checklistItems', itemId);
+  render();
+}
+async function editChecklistItem(itemId){
+  const item = await idbGet('checklistItems', itemId);
+  const text = prompt('編輯內容：', item.text);
+  if (text === null || !text.trim()) return;
+  item.text = text.trim();
+  await idbPut('checklistItems', item);
+  render();
+}
+async function addChecklistItem(checklistId){
+  const inp = document.getElementById('newItemText');
+  const text = inp.value.trim();
+  if (!text) return;
+  const existing = await idbGetByParent('checklistItems', checklistId);
+  const maxOrder = existing.reduce((m,i)=>Math.max(m, i.order??0), -1);
+  await idbPut('checklistItems', { id: uuid(), parentId: checklistId, checklistId, text, checked:false, order: maxOrder+1 });
+  inp.value = '';
+  render();
+};
+async function toggleChecklistItem(itemId){
+  const item = await idbGet('checklistItems', itemId);
+  item.checked = !item.checked;
+  await idbPut('checklistItems', item);
+}
+async function saveChecklistAsTemplate(checklistId){
+  const checklist = await idbGet('checklists', checklistId);
+  const items = await idbGetByParent('checklistItems', checklistId);
+  if (checklist.templateId){
+    await idbDeleteCascade('templateItems', checklist.templateId);
+    for (const it of items) await idbPut('templateItems', { id: uuid(), parentId: checklist.templateId, templateId: checklist.templateId, text: it.text });
+    const tpl = await idbGet('templates', checklist.templateId);
+    tpl.updatedAt = nowISO();
+    await idbPut('templates', tpl);
+  } else {
+    const tpl = { id: uuid(), name: checklist.name, category: checklist.category, createdAt: nowISO(), updatedAt: nowISO() };
+    await idbPut('templates', tpl);
+    for (const it of items) await idbPut('templateItems', { id: uuid(), parentId: tpl.id, templateId: tpl.id, text: it.text });
+    checklist.templateId = tpl.id;
+    await idbPut('checklists', checklist);
+  }
+}
+
+/* ---- 記錄 (統一 Entry) ---- */
+async function tabEntries(trip, filter){
+  const all = await idbGetByParent('entries', trip.id);
+  all.sort((a,b)=> b.createdAtUtc.localeCompare(a.createdAtUtc));
+  const filtered = filter==='all' ? all : all.filter(e=>e.type===filter);
+  const chipsRow = ['all','note','todo','expense','photo'].map(f=>{
+    const label = f==='all'?'全部':ENTRY_TYPE_LABEL[f];
+    return '<div class="chip '+(filter===f?'active':'')+'" data-action="setEntryFilter" data-id="'+trip.id+'" data-id2="'+f+'">'+label+'</div>';
+  }).join('');
+  let rows = '';
+  for (const e of filtered){
+    const photos = await idbGetByParent('entryPhotos', e.id);
+    rows += '<div class="card" data-action="'+(e.type==='todo'?'toggleEntryDone':'openEntryEdit')+'" data-id="'+e.id+'" style="cursor:pointer">'
+      + '<div class="row"><span>'+ENTRY_TYPE_ICON[e.type]+' '+ENTRY_TYPE_LABEL[e.type]+'</span><span class="soft">'+formatLocalTime(e.createdAtUtc, e.timezone)+'</span></div>'
+      + (e.type==='expense' ? '<div style="font-weight:700;margin-top:4px">'+escapeHtml(e.currency||'')+' '+(e.amount||0).toLocaleString()+(e.category?'　'+escapeHtml(e.category):'')+'</div>' : '')
+      + (e.content ? '<div style="margin-top:4px" class="'+(e.type==='todo'&&e.done?'strike':'')+'">'+escapeHtml(e.content)+'</div>' : '')
+      + (e.placeName ? '<div class="soft">📍 '+escapeHtml(e.placeName)+'</div>' : '')
+      + (photos.length ? '<div class="thumbs">'+photos.map(p=>'<img src="'+p.uri+'">').join('')+'</div>' : '')
+      + '</div>';
+  }
+  if (!filtered.length) rows = '<div class="empty"><b>還沒有任何記錄</b>點右下角「快速記錄」，用文字或照片記下當下的想法。</div>';
+  return '<div class="chips" style="position:static;margin:-16px -16px 12px;border-radius:0">'+chipsRow+'</div>'
+    + rows
+    + '<div class="fab-wrap"><div class="inner"><button class="btn" data-action="newEntry" data-id="'+trip.id+'" data-id2="'+filter+'">＋ 快速記錄</button></div></div>';
+}
+async function toggleEntryDone(entryId){
+  const e = await idbGet('entries', entryId);
+  e.done = !e.done;
+  await idbPut('entries', e);
+}
+async function openEntryEditModal(entryId){
+  const e = await idbGet('entries', entryId);
+  openModal('<h2>'+ENTRY_TYPE_LABEL[e.type]+'</h2>'
+    + '<label class="field" style="margin-top:12px"><textarea id="editContent" style="min-height:90px">'+escapeHtml(e.content)+'</textarea></label>'
+    + '<button class="btn" data-action="saveEntryEdit" data-id="'+entryId+'">儲存</button>'
+    + '<div style="height:8px"></div>'
+    + '<button class="btn danger" data-action="deleteEntry" data-id="'+entryId+'">刪除這筆記錄</button>'
+    + '<div style="height:8px"></div>'
+    + '<button class="btn secondary" data-action="closeModal">取消</button>');
+}
+async function saveEntryEdit(entryId){
+  const e = await idbGet('entries', entryId);
+  e.content = document.getElementById('editContent').value;
+  await idbPut('entries', e);
+  closeModal();
+  render();
+}
+
+let entryMode = 'note';
+async function viewEntryForm(tripId, initialMode){
+  entryMode = ['note','todo','expense'].includes(initialMode) ? initialMode : 'note';
+  draftPhotos = [];
+  const isExpense = entryMode === 'expense';
+  const contentLabel = isExpense ? '備註（選填）' : entryMode==='todo' ? '要做的事' : '內容';
+  return '<div class="topbar"><button class="back" data-action="nav" data-hash="/trip/'+tripId+'/entries">‹</button><h1>快速記錄</h1></div>'
+    + '<div class="page">'
+    + '<div class="seg" id="entrySeg">'
+    + '<button data-m="note" class="'+(entryMode==='note'?'active':'')+'" data-action="setEntryMode" data-id="note">筆記</button>'
+    + '<button data-m="todo" class="'+(entryMode==='todo'?'active':'')+'" data-action="setEntryMode" data-id="todo">待辦</button>'
+    + '<button data-m="expense" class="'+(entryMode==='expense'?'active':'')+'" data-action="setEntryMode" data-id="expense">費用</button>'
+    + '</div>'
+    + '<div id="expenseFields" style="display:'+(isExpense?'block':'none')+'">'
+    + '<div style="display:flex;gap:8px">'
+    + '<label class="field" style="flex:1"><span class="lbl">金額</span><input type="number" id="f_amount" placeholder="0"></label>'
+    + '<label class="field" style="width:90px"><span class="lbl">幣種</span><input type="text" id="f_currency" value="JPY"></label>'
+    + '</div>'
+    + '<label class="field"><span class="lbl">分類（選填）</span><input type="text" id="f_category" placeholder="例如：餐飲、交通、住宿"></label>'
+    + '</div>'
+    + '<label class="field"><span class="lbl" id="contentLabel">'+contentLabel+'</span><textarea id="f_content" placeholder="記下現在的想法..."></textarea></label>'
+    + '<div class="btn-row" style="margin-bottom:10px">'
+    + '<button class="btn secondary" data-action="takePhoto">📷 拍照</button>'
+    + '<button class="btn secondary" data-action="pickPhotos">🖼 選擇照片</button>'
+    + '</div>'
+    + '<input type="file" accept="image/*" capture="environment" id="cameraInput" data-photoinput style="display:none">'
+    + '<input type="file" accept="image/*" multiple id="libraryInput" data-photoinput style="display:none">'
+    + '<div class="thumbs" id="draftThumbs"></div>'
+    + '<button class="btn" data-action="saveEntry" data-id="'+tripId+'">儲存記錄</button>'
+    + '</div>';
+}
+function setEntryMode(mode){
+  entryMode = mode;
+  document.querySelectorAll('#entrySeg button').forEach(b=>b.classList.toggle('active', b.dataset.m===mode));
+  document.getElementById('expenseFields').style.display = mode==='expense' ? 'block' : 'none';
+  document.getElementById('contentLabel').textContent = mode==='expense' ? '備註（選填）' : mode==='todo' ? '要做的事' : '內容';
+}
+async function saveEntryForm(tripId){
+  const content = document.getElementById('f_content').value.trim();
+  let type = entryMode;
+  let amount=null, currency=null, category=null;
+  if (entryMode === 'expense'){
+    amount = Number(document.getElementById('f_amount').value);
+    if (!amount) return alert('請輸入金額');
+    currency = document.getElementById('f_currency').value.trim().toUpperCase();
+    category = document.getElementById('f_category').value.trim() || null;
+  } else {
+    if (!content && draftPhotos.length===0) return alert('請輸入內容或附上照片');
+    if (!content && draftPhotos.length>0) type = 'photo';
+  }
+  const entry = { id: uuid(), parentId: tripId, tripId, type, content,
+    createdAtUtc: nowISO(), timezone: currentTimezone(),
+    lat:null, lng:null, placeName:null, amount, currency, category, done:false };
+  await idbPut('entries', entry);
+  for (let i=0;i<draftPhotos.length;i++){
+    await idbPut('entryPhotos', { id: uuid(), parentId: entry.id, entryId: entry.id, uri: draftPhotos[i], sortOrder:i });
+  }
+  draftPhotos = [];
+  go('/trip/'+tripId+'/entries');
+}
+
+/* ---- 花費 ---- */
+async function tabExpenses(trip){
+  const entries = (await idbGetByParent('entries', trip.id)).filter(e=>e.type==='expense');
+  entries.sort((a,b)=>b.createdAtUtc.localeCompare(a.createdAtUtc));
+  const totals = {};
+  entries.forEach(e=>{ totals[e.currency] = (totals[e.currency]||0) + Number(e.amount||0); });
+  const totalRows = Object.keys(totals).map(c=>'<div style="font-size:22px;font-weight:700;margin-top:4px">'+c+' '+totals[c].toLocaleString()+'</div>').join('');
+  const detailRows = entries.map(e=>
+    '<div class="row" style="padding:8px 0;border-bottom:1px solid var(--line);align-items:flex-start">'
+    + '<div><div>'+escapeHtml(e.currency)+' '+Number(e.amount).toLocaleString()+(e.category?' · '+escapeHtml(e.category):'')+'</div>'
+    + (e.content?'<div class="soft">'+escapeHtml(e.content)+'</div>':'')+'</div>'
+    + '<div class="soft">'+formatLocalTime(e.createdAtUtc,e.timezone)+'</div></div>'
+  ).join('');
+  return (Object.keys(totals).length
+    ? '<div class="card"><div class="soft">費用總計（依幣種分別加總）</div>'+totalRows+'</div>'
+    : '<div class="empty"><b>還沒有花費記錄</b>在「記錄」用「快速記錄」新增一筆費用。</div>')
+    + (detailRows ? '<div class="soft" style="margin:16px 0 8px">明細</div>'+detailRows : '');
+}
+
+/* ---- 時間軸 ---- */
+async function tabTimeline(trip){
+  const items = await idbGetByParent('scheduleItems', trip.id);
+  items.sort((a,b)=> a.date.localeCompare(b.date) || (a.order??0)-(b.order??0));
+  let days = [];
+  let cur = new Date(trip.startDate+'T00:00:00');
+  const end = new Date(trip.endDate+'T00:00:00');
+  while (cur <= end){ days.push(cur.getFullYear()+'-'+pad(cur.getMonth()+1)+'-'+pad(cur.getDate())); cur.setDate(cur.getDate()+1); }
+  let html = '';
+  days.forEach((day, idx)=>{
+    const dayItems = items.filter(i=>i.date===day);
+    const rows = dayItems.map(i=>
+      '<div class="row drag-item" data-drag-item data-id="'+i.id+'" style="padding:6px 0">'
+      + '<span class="drag-handle" data-drag-handle>⠿</span>'
+      + '<b style="width:56px;flex-shrink:0;color:var(--accent)">'+(i.time||'—')+'</b>'
+      + '<div style="flex:1">'+escapeHtml(i.title)+'</div>'
+      + '<button class="icon-btn" data-action="editScheduleItem" data-id="'+i.id+'">✎</button>'
+      + '<button class="icon-btn danger-ic" data-action="deleteScheduleItem" data-id="'+i.id+'">✕</button></div>'
+    ).join('');
+    html += '<div class="card"><h3 style="font-size:15px">Day '+(idx+1)+' · '+day.slice(5)+'</h3>'
+      + '<div data-drag-list="scheduleItems">' + (rows || '<div class="soft" style="margin-top:6px">還沒有安排</div>') + '</div>'
+      + '<div id="adder_'+day+'"><button class="link-btn" data-action="addScheduleStart" data-id="'+trip.id+'|'+day+'">＋ 新增安排</button></div>'
+      + '</div>';
+  });
+  return (html || '<div class="empty">行程日期不完整</div>') + '<div class="soft" style="text-align:center;margin-top:6px">按住⠿可拖曳排序當天的安排</div>';
+}
+function showScheduleAdder(compound){
+  const [tripId, day] = compound.split('|');
+  const box = document.getElementById('adder_'+day);
+  box.innerHTML = '<div style="display:flex;gap:8px;margin-top:6px">'
+    + '<input type="text" id="sch_time_'+day+'" placeholder="HH:mm" style="width:80px">'
+    + '<input type="text" id="sch_title_'+day+'" placeholder="安排內容" style="flex:1">'
+    + '</div><button class="btn small" style="margin-top:6px" data-action="saveScheduleItem" data-id="'+tripId+'|'+day+'">新增</button>';
+}
+async function saveScheduleItem(compound){
+  const [tripId, day] = compound.split('|');
+  const time = document.getElementById('sch_time_'+day).value.trim();
+  const title = document.getElementById('sch_title_'+day).value.trim();
+  if (!title) return;
+  const existing = (await idbGetByParent('scheduleItems', tripId)).filter(i=>i.date===day);
+  const maxOrder = existing.reduce((m,i)=>Math.max(m, i.order??0), -1);
+  await idbPut('scheduleItems', { id: uuid(), parentId: tripId, tripId, date: day, time: time||null, title, note:'', order: maxOrder+1 });
+  render();
+}
+async function editScheduleItem(itemId){
+  const item = await idbGet('scheduleItems', itemId);
+  const time = prompt('時間（HH:mm，可留空）：', item.time||'');
+  if (time === null) return;
+  const title = prompt('安排內容：', item.title);
+  if (title === null || !title.trim()) return;
+  item.time = time.trim() || null;
+  item.title = title.trim();
+  await idbPut('scheduleItems', item);
+  render();
+}
+
+/* ---- 回顧 ---- */
+async function tabReview(trip){
+  const entries = await idbGetByParent('entries', trip.id);
+  const notes = entries.filter(e=>e.type==='note').length;
+  const todos = entries.filter(e=>e.type==='todo');
+  const todosDone = todos.filter(t=>t.done).length;
+  const photos = entries.filter(e=>e.type==='photo').length;
+  const expenses = entries.filter(e=>e.type==='expense');
+  const totals = {};
+  expenses.forEach(e=>{ totals[e.currency] = (totals[e.currency]||0) + Number(e.amount||0); });
+  const totalHtml = Object.keys(totals).length
+    ? Object.keys(totals).map(c=>'<div style="font-size:18px;font-weight:700;margin-top:4px">'+c+' '+totals[c].toLocaleString()+'</div>').join('')
+    : '<div class="soft" style="margin-top:6px">沒有費用記錄</div>';
+  const checklists = await idbGetByParent('checklists', trip.id);
+  const checklistRows = checklists.length ? checklists.map(c=>
+    '<div class="row" style="margin-bottom:8px"><span>'+escapeHtml(c.name)+'</span>'
+    + '<button class="btn small secondary" data-action="saveAsTemplateFromReview" data-id="'+c.id+'">存回模板</button></div>'
+  ).join('') : '<div class="soft">這個行程沒有套用任何清單。</div>';
+  return '<div class="stat-grid">'
+    + '<div class="stat"><div class="n">'+notes+'</div><div class="soft">筆記</div></div>'
+    + '<div class="stat"><div class="n">'+todosDone+'/'+todos.length+'</div><div class="soft">待辦完成</div></div>'
+    + '<div class="stat"><div class="n">'+photos+'</div><div class="soft">照片</div></div>'
+    + '</div>'
+    + '<div class="card" style="margin-top:16px"><div class="soft">費用總計</div>'+totalHtml+'</div>'
+    + '<div class="soft" style="margin:20px 0 8px">把這次的清單存回模板</div>'
+    + checklistRows;
+}
+
+/* ===================== 模板 ===================== */
+async function viewTemplatesList(){
+  const templates = await idbGetAll('templates');
+  const order = ['packing','sop','shopping','todo'];
+  let html = '';
+  order.forEach(cat=>{
+    const items = templates.filter(t=>t.category===cat);
+    if (!items.length) return;
+    html += '<div class="soft" style="margin:14px 0 6px">'+CATEGORY_LABEL[cat]+'</div>';
+    html += items.map(t=>'<div class="card" style="cursor:pointer" data-action="nav" data-hash="/template/'+t.id+'">'+escapeHtml(t.name)+'</div>').join('');
+  });
+  if (!templates.length) html = '<div class="empty"><b>還沒有任何模板</b>建立可重複使用的打包清單、SOP流程或待買物品清單。</div>';
+  return '<div class="topbar"><h1>清單模板</h1></div>'
+    + '<div class="page">'+html+'</div>'
+    + '<div class="fab-wrap"><div class="inner"><button class="btn" data-action="newTemplate">＋ 新增模板</button></div></div>'
+    + tabbar('templates');
+}
+async function viewTemplateForm(templateId){
+  let name='', category='packing', itemsText='';
+  if (templateId){
+    const t = await idbGet('templates', templateId);
+    name = t.name; category = t.category;
+    const items = await idbGetByParent('templateItems', templateId);
+    itemsText = items.map(i=>i.text).join('\n');
+  }
+  const cats = ['packing','sop','shopping','todo'];
+  const segHtml = cats.map(c=>'<button data-t="'+c+'" data-action="segToggle" class="'+(c===category?'active':'')+'">'+CATEGORY_LABEL[c].replace('清單','').replace('流程','').replace('物品','')+'</button>').join('');
+  return '<div class="topbar"><button class="back" data-action="nav" data-hash="/templates">‹</button><h1>'+(templateId?'編輯模板':'新增模板')+'</h1></div>'
+    + '<div class="page">'
+    + '<label class="field"><span class="lbl">模板名稱</span><input type="text" id="t_name" value="'+escapeHtml(name)+'" placeholder="例如：日本出差打包清單"></label>'
+    + '<label class="field"><span class="lbl">分類</span><div class="seg" id="t_cat_seg">'+segHtml+'</div></label>'
+    + '<label class="field"><span class="lbl">項目（每行一項）</span><textarea id="t_items" style="min-height:180px">'+escapeHtml(itemsText)+'</textarea></label>'
+    + '<button class="btn" data-action="saveTemplate" data-id="'+(templateId||'')+'">'+(templateId?'儲存變更':'建立模板')+'</button>'
+    + (templateId ? '<button class="btn danger" style="margin-top:10px" data-action="deleteTemplate" data-id="'+templateId+'">刪除模板</button>' : '')
+    + '</div>';
+}
+async function saveTemplateForm(templateId){
+  const name = document.getElementById('t_name').value.trim();
+  if (!name) return alert('請輸入模板名稱');
+  const category = document.querySelector('#t_cat_seg button.active').dataset.t;
+  const itemTexts = nl2li(document.getElementById('t_items').value);
+  if (templateId){
+    const t = await idbGet('templates', templateId);
+    t.name = name; t.category = category; t.updatedAt = nowISO();
+    await idbPut('templates', t);
+    await idbDeleteCascade('templateItems', templateId);
+    for (const text of itemTexts) await idbPut('templateItems', { id: uuid(), parentId: templateId, templateId, text });
+    go('/templates');
+  } else {
+    const t = { id: uuid(), name, category, createdAt: nowISO(), updatedAt: nowISO() };
+    await idbPut('templates', t);
+    for (const text of itemTexts) await idbPut('templateItems', { id: uuid(), parentId: t.id, templateId: t.id, text });
+    go('/template/'+t.id);
+  }
+}
+
+/* 若透過網址（https）開啟，嘗試註冊 Service Worker 以支援離線快取／可安裝；
+   若是用本機檔案（file://）直接開啟，這裡會安靜失敗，不影響其他功能 */
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
