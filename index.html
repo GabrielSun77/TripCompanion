@@ -707,7 +707,7 @@ function openTimezonePicker(tripId, currentTz){
     + '</div>'
     + '<div style="margin-top:14px;display:flex;gap:8px">'
     + '<button class="btn secondary" style="flex:1" data-action="clearTripTimezone" data-id="'+tripId+'">恢復自動偵測</button>'
-    + '<button class="btn secondary" style="flex:1" data-action="closeModal">取消</button>'
+    + '<button class="btn secondary" style="flex:1" data-action="closeModal">關閉</button>'
     + '</div>');
 }
 async function setTripTimezone(tripId, tz){
@@ -791,7 +791,7 @@ async function tabChecklists(trip){
     const items = await idbGetByParent('checklistItems', c.id);
     const done = items.filter(i=>i.checked).length;
     const tone = items.length && done===items.length ? 'good':'';
-    rows += '<div class="card" style="cursor:pointer" data-action="nav" data-hash="/trip/'+trip.id+'/checklist/'+c.id+'">'
+    rows += '<div class="card" style="cursor:pointer" data-action="nav" data-hash="/trip/'+t.id+'/checklist/'+c.id+'">'
       + '<div class="row"><div><div>'+escapeHtml(c.name)+'</div><div class="soft">'+CATEGORY_LABEL[c.category]+'</div></div>'
       + '<span class="tag '+tone+'">'+done+'/'+items.length+'</span></div></div>';
   }
@@ -800,7 +800,7 @@ async function tabChecklists(trip){
   let sopRows = '';
   for (const c of sops){
     const items = await idbGetByParent('checklistItems', c.id);
-    sopRows += '<div class="card" style="cursor:pointer" data-action="nav" data-hash="/trip/'+trip.id+'/checklist/'+c.id+'">'
+    sopRows += '<div class="card" style="cursor:pointer" data-action="nav" data-hash="/trip/'+t.id+'/checklist/'+c.id+'">'
       + '<div class="row"><div><div>📖 '+escapeHtml(c.name)+'</div><div class="soft">SOP流程參考</div></div>'
       + '<span class="tag">'+items.length+' 個步驟</span></div></div>';
   }
@@ -969,8 +969,11 @@ async function addChecklistItem(checklistId){
 };
 async function toggleChecklistItem(itemId){
   const item = await idbGet('checklistItems', itemId);
-  item.checked = !item.checked;
-  await idbPut('checklistItems', item);
+  // 只有當項目不是主標題時才能勾選
+  if (item.isMainItem !== true) {
+    item.checked = !item.checked;
+    await idbPut('checklistItems', item);
+  }
 }
 async function saveChecklistAsTemplate(checklistId){
   const checklist = await idbGet('checklists', checklistId);
@@ -995,7 +998,7 @@ async function saveChecklistAsTemplate(checklistId){
       } else {
         // 如果子項目沒有前導主標題，則創建一個「未分類項目」作為主標題
         currentMainItem = { id: uuid(), text: "未分類項目", subItems: [] };
-        newDraftTemplateMainItems.push(currentMainItem);
+        newDraftTemplateMainItems.push(currentDraftTemplateMainItems); // 修正：這裡應該是 push currentMainItem
         currentMainItem.subItems.push({ id: uuid(), text: item.text.trim() });
       }
     }
