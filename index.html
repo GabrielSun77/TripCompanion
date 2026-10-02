@@ -92,6 +92,30 @@
   .drag-item.dragging{opacity:.85;background:var(--surface-2);border-radius:8px;box-shadow:0 6px 16px rgba(0,0,0,.4);}
   .icon-btn{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:17px;padding:8px 8px;flex-shrink:0;line-height:1;}
   .icon-btn.danger-ic{color:var(--danger);}
+
+  /* 新增的樣式 */
+  .checklist-main-item {
+    font-weight: 700;
+    font-size: 16px;
+    margin-top: 16px; /* 主項目上方留白 */
+    margin-bottom: 8px; /* 主項目下方留白 */
+    padding-bottom: 0; /* 移除底部內邊距 */
+    border-bottom: none; /* 移除底部邊框 */
+    display: flex; /* 讓編輯/刪除按鈕對齊 */
+    align-items: center;
+    gap: 8px;
+  }
+  .checklist-main-item h4 {
+    flex: 1;
+    margin: 0;
+  }
+  .checklist-sub-item-row {
+    margin-left: 20px; /* 子項目縮排 */
+    border-bottom: 1px solid var(--line); /* 子項目底部邊框 */
+  }
+  .checklist-sub-item-row:last-of-type {
+    border-bottom: none; /* 最後一個子項目移除底部邊框 */
+  }
 </style>
 </head>
 <body>
@@ -683,7 +707,7 @@ function openTimezonePicker(tripId, currentTz){
     + '</div>'
     + '<div style="margin-top:14px;display:flex;gap:8px">'
     + '<button class="btn secondary" style="flex:1" data-action="clearTripTimezone" data-id="'+tripId+'">恢復自動偵測</button>'
-    + '<button class="btn secondary" style="flex:1" data-action="closeModal">關閉</button>'
+    + '<button class="btn secondary" style="flex:1" data-action="closeModal">取消</button>'
     + '</div>');
 }
 async function setTripTimezone(tripId, tz){
@@ -826,15 +850,16 @@ async function applyTemplateToTrip(tripId, templateId){
 
   let itemOrder = 0;
   for (const mainItem of mainItems){
-    // 將主項目作為一個清單項目
-    await idbPut('checklistItems', { id: uuid(), parentId: checklist.id, checklistId: checklist.id, text: mainItem.text, checked: false, order: itemOrder++ });
+    // 將主項目作為一個清單項目，並標記為 isMainItem: true
+    await idbPut('checklistItems', { id: uuid(), parentId: checklist.id, checklistId: checklist.id, text: mainItem.text, checked: false, isMainItem: true, order: itemOrder++ });
 
     const subItems = await idbGetByParent('templateSubItems', mainItem.id);
     subItems.sort((a,b) => (a.order??0) - (b.order??0));
 
     for (const subItem of subItems){
-      // 將子項目作為一個清單項目，並加上縮排，使其在視覺上呈現階層關係
-      await idbPut('checklistItems', { id: uuid(), parentId: checklist.id, checklistId: checklist.id, text: '  - ' + subItem.text, checked: false, order: itemOrder++ });
+      // 將子項目作為一個清單項目，並標記為 isMainItem: false
+      // 注意：這裡不再需要 '  - ' 前綴，因為縮排會由 CSS 控制
+      await idbPut('checklistItems', { id: uuid(), parentId: checklist.id, checklistId: checklist.id, text: subItem.text, checked: false, isMainItem: false, order: itemOrder++ });
     }
   }
   return checklist;
@@ -861,7 +886,9 @@ async function viewChecklistDetail(tripId, checklistId){
   items.sort((a,b)=> (a.order??0) - (b.order??0));
   const isSop = checklist.category === 'sop';
   let progressLine, rows;
+
   if (isSop){
+    // SOP 流程保持原樣，因為它們不涉及勾選和階層
     progressLine = '<div class="soft">共 '+items.length+' 個步驟 · 供查詢參考，不需要打勾 · 按住⠿可拖曳排序</div>';
     rows = '<div data-drag-list="checklistItems">' + items.map((i,idx)=>
       '<div class="item-row drag-item" data-drag-item data-id="'+i.id+'">'
@@ -872,17 +899,32 @@ async function viewChecklistDetail(tripId, checklistId){
       + '<button class="icon-btn danger-ic" data-action="deleteChecklistItem" data-id="'+i.id+'" data-id2="'+checklistId+'">✕</button>'
       + '</div>'
     ).join('') + '</div>';
-  } else {
-    const done = items.filter(i=>i.checked).length;
-    progressLine = '<div class="soft">'+done+'/'+items.length+' 已完成</div>';
-    rows = items.map(i=>
-      '<div class="item-row">'
-      + '<div class="checkbox '+(i.checked?'on':'')+'" data-action="toggleChecklistItem" data-id="'+i.id+'" style="cursor:pointer">'+(i.checked?'✓':'')+'</div>'
-      + '<div class="'+(i.checked?'strike':'')+'" data-action="toggleChecklistItem" data-id="'+i.id+'" style="cursor:pointer;flex:1">'+escapeHtml(i.text)+'</div>'
-      + '<button class="icon-btn" data-action="editChecklistItem" data-id="'+i.id+'">✎</button>'
-      + '<button class="icon-btn danger-ic" data-action="deleteChecklistItem" data-id="'+i.id+'" data-id2="'+checklistId+'">✕</button>'
-      + '</div>'
-    ).join('');
+  } else { // 一般清單 (打包、待辦、購物)
+    const checkableItems = items.filter(i => i.isMainItem === false || !i.hasOwnProperty('isMainItem')); // 統計所有可勾選項目 (isMainItem 為 false 或 undefined)
+    const done = checkableItems.filter(i => i.checked).length;
+    const totalCheckable = checkableItems.length;
+    progressLine = '<div class="soft">'+done+'/'+totalCheckable+' 已完成</div>';
+
+    rows = items.map(i => {
+      if (i.isMainItem) { // 主標題項目
+        return `
+          <div class="item-row checklist-main-item">
+            <h4>${escapeHtml(i.text)}</h4>
+            <button class="icon-btn" data-action="editChecklistItem" data-id="${i.id}">✎</button>
+            <button class="icon-btn danger-ic" data-action="deleteChecklistItem" data-id="${i.id}" data-id2="${checklistId}">✕</button>
+          </div>
+        `;
+      } else { // 子項目 (或舊的、未標記為 isMainItem 的項目)
+        return `
+          <div class="item-row checklist-sub-item-row">
+            <div class="checkbox ${i.checked ? 'on' : ''}" data-action="toggleChecklistItem" data-id="${i.id}" style="cursor:pointer">${i.checked ? '✓' : ''}</div>
+            <div class="${i.checked ? 'strike' : ''}" data-action="toggleChecklistItem" data-id="${i.id}" style="cursor:pointer;flex:1">${escapeHtml(i.text)}</div>
+            <button class="icon-btn" data-action="editChecklistItem" data-id="${i.id}">✎</button>
+            <button class="icon-btn danger-ic" data-action="deleteChecklistItem" data-id="${i.id}" data-id2="${checklistId}">✕</button>
+          </div>
+        `;
+      }
+    }).join('');
   }
   return '<div class="topbar"><button class="back" data-action="nav" data-hash="/trip/'+tripId+'/checklists">‹</button>'
     + '<h1>'+(isSop?'📖 ':'')+escapeHtml(checklist.name)+'</h1>'
@@ -892,7 +934,7 @@ async function viewChecklistDetail(tripId, checklistId){
     + progressLine
     + rows
     + '<form data-checklist-add data-id="'+checklistId+'" style="display:flex;gap:8px;margin-top:10px">'
-    + '<input type="text" id="newItemText" placeholder="'+(isSop?'新增步驟':'新增項目')+'" style="flex:1;min-width:0" enterkeyhint="done">'
+    + '<input type="text" id="newItemText" placeholder="'+(isSop?'新增步驟':'新增主標題')+'" style="flex:1;min-width:0" enterkeyhint="done">'
     + '<button type="submit" class="btn secondary" style="width:auto;flex:0 0 auto;white-space:nowrap">新增</button>'
     + '</form>'
     + '<div style="margin-top:16px;display:flex;gap:8px">'
@@ -919,7 +961,8 @@ async function addChecklistItem(checklistId){
   if (!text) return;
   const existing = await idbGetByParent('checklistItems', checklistId);
   const maxOrder = existing.reduce((m,i)=>Math.max(m, i.order??0), -1);
-  await idbPut('checklistItems', { id: uuid(), parentId: checklistId, checklistId, text, checked:false, order: maxOrder+1 });
+  // 預設新增的項目為一個主標題 (isMainItem: true)
+  await idbPut('checklistItems', { id: uuid(), parentId: checklistId, checklistId, text, checked:false, isMainItem: true, order: maxOrder+1 });
   inp.value = '';
   render();
 };
@@ -932,19 +975,28 @@ async function saveChecklistAsTemplate(checklistId){
   const checklist = await idbGet('checklists', checklistId);
   const items = await idbGetByParent('checklistItems', checklistId);
 
-  // 簡單地將清單項目轉換回模板的階層結構
-  // 這裡假設以 "  - " 開頭的項目是子項目
   let currentMainItem = null;
   const newDraftTemplateMainItems = [];
 
   for (const item of items) {
-    if (item.text.startsWith('  - ')) { // 判斷為子項目
-      if (currentMainItem) {
-        currentMainItem.subItems.push({ id: uuid(), text: item.text.substring(4).trim() }); // 移除 "  - "
-      }
-    } else { // 判斷為主項目
+    // 判斷項目是主標題還是子項目
+    // isMainItem: true -> 主標題
+    // isMainItem: false 或 undefined (舊數據) -> 子項目
+    const isMain = item.isMainItem === true;
+    const isSub = item.isMainItem === false || !item.hasOwnProperty('isMainItem'); // 舊數據沒有 isMainItem 屬性，會被視為子項目
+
+    if (isMain) {
       currentMainItem = { id: uuid(), text: item.text.trim(), subItems: [] };
       newDraftTemplateMainItems.push(currentMainItem);
+    } else if (isSub) {
+      if (currentMainItem) {
+        currentMainItem.subItems.push({ id: uuid(), text: item.text.trim() });
+      } else {
+        // 如果子項目沒有前導主標題，則創建一個「未分類項目」作為主標題
+        currentMainItem = { id: uuid(), text: "未分類項目", subItems: [] };
+        newDraftTemplateMainItems.push(currentMainItem);
+        currentMainItem.subItems.push({ id: uuid(), text: item.text.trim() });
+      }
     }
   }
 
