@@ -900,7 +900,8 @@ async function viewChecklistDetail(tripId, checklistId){
       + '</div>'
     ).join('') + '</div>';
   } else { // 一般清單 (打包、待辦、購物)
-    const checkableItems = items.filter(i => i.isMainItem === false || !i.hasOwnProperty('isMainItem')); // 統計所有可勾選項目 (isMainItem 為 false 或 undefined)
+    // 統計所有可勾選項目 (isMainItem 為 false 或 undefined)
+    const checkableItems = items.filter(i => i.isMainItem === false || !i.hasOwnProperty('isMainItem'));
     const done = checkableItems.filter(i => i.checked).length;
     const totalCheckable = checkableItems.length;
     progressLine = '<div class="soft">'+done+'/'+totalCheckable+' 已完成</div>';
@@ -934,7 +935,7 @@ async function viewChecklistDetail(tripId, checklistId){
     + progressLine
     + rows
     + '<form data-checklist-add data-id="'+checklistId+'" style="display:flex;gap:8px;margin-top:10px">'
-    + '<input type="text" id="newItemText" placeholder="'+(isSop?'新增步驟':'新增主標題')+'" style="flex:1;min-width:0" enterkeyhint="done">'
+    + '<input type="text" id="newItemText" placeholder="'+(isSop?'新增步驟':'新增項目')+'" style="flex:1;min-width:0" enterkeyhint="done">'
     + '<button type="submit" class="btn secondary" style="width:auto;flex:0 0 auto;white-space:nowrap">新增</button>'
     + '</form>'
     + '<div style="margin-top:16px;display:flex;gap:8px">'
@@ -961,8 +962,8 @@ async function addChecklistItem(checklistId){
   if (!text) return;
   const existing = await idbGetByParent('checklistItems', checklistId);
   const maxOrder = existing.reduce((m,i)=>Math.max(m, i.order??0), -1);
-  // 預設新增的項目為一個主標題 (isMainItem: true)
-  await idbPut('checklistItems', { id: uuid(), parentId: checklistId, checklistId, text, checked:false, isMainItem: true, order: maxOrder+1 });
+  // 預設新增的項目為一個子項目 (isMainItem: false)
+  await idbPut('checklistItems', { id: uuid(), parentId: checklistId, checklistId, text, checked:false, isMainItem: false, order: maxOrder+1 });
   inp.value = '';
   render();
 };
