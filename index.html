@@ -99,8 +99,8 @@
 <script>
 /* ===================== 資料層：IndexedDB ===================== */
 const DB_NAME = 'tripCompanionDB';
-const DB_VERSION = 2;
-const STORES = ['trips','templates','templateItems','checklists','checklistItems','entries','entryPhotos','scheduleItems','transports'];
+const DB_VERSION = 3; // *** 版本號增加到 3，會觸發資料庫升級 ***
+const STORES = ['trips','templates','checklists','checklistItems','entries','entryPhotos','scheduleItems','transports', 'templateMainItems', 'templateSubItems']; // 移除 templateItems, 新增 templateMainItems, templateSubItems
 let dbPromise = null;
 function openDB(){
   if (dbPromise) return dbPromise;
@@ -108,12 +108,35 @@ function openDB(){
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
-      STORES.forEach(name => {
-        if (!db.objectStoreNames.contains(name)) {
-          const store = db.createObjectStore(name, { keyPath: 'id' });
-          if (name !== 'trips' && name !== 'templates') store.createIndex('byParent', 'parentId');
+
+      // 定義所有 Object Store 及其 keyPath 和索引
+      const storeDefinitions = {
+        trips: { keyPath: 'id' },
+        templates: { keyPath: 'id' },
+        checklists: { keyPath: 'id', indexes: [{ name: 'byParent', keyPath: 'parentId' }] }, // parentId = tripId
+        checklistItems: { keyPath: 'id', indexes: [{ name: 'byParent', keyPath: 'parentId' }] }, // parentId = checklistId
+        entries: { keyPath: 'id', indexes: [{ name: 'byParent', keyPath: 'parentId' }] }, // parentId = tripId
+        entryPhotos: { keyPath: 'id', indexes: [{ name: 'byParent', keyPath: 'parentId' }] }, // parentId = entryId
+        scheduleItems: { keyPath: 'id', indexes: [{ name: 'byParent', keyPath: 'parentId' }] }, // parentId = tripId
+        transports: { keyPath: 'id', indexes: [{ name: 'byParent', keyPath: 'parentId' }] }, // parentId = tripId
+        templateMainItems: { keyPath: 'id', indexes: [{ name: 'byParent', keyPath: 'templateId' }] }, // 新增: parentId = templateId
+        templateSubItems: { keyPath: 'id', indexes: [{ name: 'byParent', keyPath: 'mainItemId' }] } // 新增: parentId = mainItemId
+      };
+
+      for (const storeName in storeDefinitions) {
+        const def = storeDefinitions[storeName];
+        if (!db.objectStoreNames.contains(storeName)) {
+          const store = db.createObjectStore(storeName, { keyPath: def.keyPath });
+          if (def.indexes) {
+            def.indexes.forEach(idx => store.createIndex(idx.name, idx.keyPath));
+          }
         }
-      });
+      }
+
+      // 如果舊的 templateItems 存在，則刪除它 (從 v2 升級到 v3 時)
+      if (db.objectStoreNames.contains('templateItems')) {
+        db.deleteObjectStore('templateItems');
+      }
     };
     req.onsuccess = (e) => resolve(e.target.result);
     req.onerror = (e) => reject(e.target.error);
@@ -130,6 +153,7 @@ function idbGet(store, id){ return tx(store,'readonly').then(s => new Promise((r
 function idbGetAll(store){ return tx(store,'readonly').then(s => new Promise((res,rej)=>{
   const r = s.getAll(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error);
 })); }
+// idbGetByParent 函式保持不變，因為新的 store 也使用 'parentId' 作為索引鍵
 function idbGetByParent(store, parentId){ return tx(store,'readonly').then(s => new Promise((res,rej)=>{
   const idx = s.index('byParent'); const r = idx.getAll(parentId);
   r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error);
@@ -137,9 +161,21 @@ function idbGetByParent(store, parentId){ return tx(store,'readonly').then(s => 
 function idbDelete(store, id){ return tx(store,'readwrite').then(s => new Promise((res,rej)=>{
   const r = s.delete(id); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error);
 })); }
+// idbDeleteCascade 函式需要特別處理模板的階層關係
 async function idbDeleteCascade(store, parentId){
-  const items = await idbGetByParent(store, parentId);
-  for (const it of items) await idbDelete(store, it.id);
+  if (store === 'templates') { // 當刪除一個模板時
+    const mainItems = await idbGetByParent('templateMainItems', parentId); // parentId 是 templateId
+    for (const mainItem of mainItems) {
+      await idbDeleteCascade('templateSubItems', mainItem.id); // 遞迴刪除子項目 (parentId 是 mainItem.id)
+      await idbDelete('templateMainItems', mainItem.id); // 刪除主項目
+    }
+  } else if (store === 'templateMainItems') { // 如果直接刪除一個主項目 (這個 case 目前沒有直接使用，但保留以防萬一)
+    await idbDeleteCascade('templateSubItems', parentId); // parentId 是 mainItem.id
+    await idbDelete('templateMainItems', parentId);
+  } else { // 其他 store 的通用刪除邏輯
+    const items = await idbGetByParent(store, parentId);
+    for (const it of items) await idbDelete(store, it.id);
+  }
 }
 
 /* ===================== 工具函式 ===================== */
@@ -240,6 +276,11 @@ async function render(){
   }
   bindActions();
   bindDragReorder();
+
+  // *** 新增：如果當前頁面是模板表單，則渲染動態模板項目 ***
+  if (parts[0] === 'template' && (parts[1] === 'new' || parts[1])) {
+    renderTemplateItems();
+  }
 }
 
 /* ===================== 拖曳排序 ===================== */
@@ -342,6 +383,8 @@ function bindActions(){
 }
 
 let draftPhotos = [];
+// *** 新增：用於儲存模板表單中動態項目的草稿數據 ***
+let draftTemplateMainItems = [];
 
 async function handlePhotoInput(input){
   const files = Array.from(input.files || []);
@@ -365,6 +408,38 @@ async function handleAction(action, id, id2, el){
     el.classList.add('active');
     return;
   }
+
+  // *** 新增：處理模板動態項目的動作 ***
+  if (action === 'addTemplateMainItem'){
+    draftTemplateMainItems.push({ id: uuid(), text: '', subItems: [] });
+    renderTemplateItems();
+    return;
+  }
+  if (action === 'removeTemplateMainItem'){
+    if (!confirm('確定刪除這個主項目及其所有子項目？')) return;
+    draftTemplateMainItems.splice(parseInt(id), 1);
+    renderTemplateItems();
+    return;
+  }
+  if (action === 'addTemplateSubItem'){
+    const mainIdx = parseInt(id);
+    if (draftTemplateMainItems[mainIdx]) {
+      draftTemplateMainItems[mainIdx].subItems.push({ id: uuid(), text: '' });
+      renderTemplateItems();
+    }
+    return;
+  }
+  if (action === 'removeTemplateSubItem'){
+    if (!confirm('確定刪除這個子項目？')) return;
+    const mainIdx = parseInt(id);
+    const subIdx = parseInt(id2);
+    if (draftTemplateMainItems[mainIdx] && draftTemplateMainItems[mainIdx].subItems[subIdx]) {
+      draftTemplateMainItems[mainIdx].subItems.splice(subIdx, 1);
+      renderTemplateItems();
+    }
+    return;
+  }
+  // *** 模板動態項目的動作結束 ***
 
   if (action === 'newTrip'){ go('/trip/new'); return; }
   if (action === 'saveTrip'){ await saveTripForm(); return; }
@@ -432,7 +507,9 @@ async function handleAction(action, id, id2, el){
   if (action === 'saveTemplate'){ await saveTemplateForm(id); return; }
   if (action === 'deleteTemplate'){
     if (!confirm('刪除這個模板？已套用到行程中的清單不會受影響。')) return;
-    await idbDeleteCascade('templateItems', id); await idbDelete('templates', id); go('/templates'); return;
+    await idbDeleteCascade('templates', id); // 修改為呼叫新的 idbDeleteCascade
+    await idbDelete('templates', id);
+    go('/templates'); return;
   }
 }
 
@@ -740,11 +817,25 @@ async function applyTemplateToTrip(tripId, templateId){
   const suggested = template.name;
   const name = prompt('這份清單的名稱：', suggested);
   if (name === null) return null;
-  const items = await idbGetByParent('templateItems', templateId);
+
   const checklist = { id: uuid(), parentId: tripId, tripId, templateId, name: (name.trim()||suggested), category: template.category, createdAt: nowISO() };
   await idbPut('checklists', checklist);
-  for (const it of items){
-    await idbPut('checklistItems', { id: uuid(), parentId: checklist.id, checklistId: checklist.id, text: it.text, checked: false });
+
+  const mainItems = await idbGetByParent('templateMainItems', templateId);
+  mainItems.sort((a,b) => (a.order??0) - (b.order??0));
+
+  let itemOrder = 0;
+  for (const mainItem of mainItems){
+    // 將主項目作為一個清單項目
+    await idbPut('checklistItems', { id: uuid(), parentId: checklist.id, checklistId: checklist.id, text: mainItem.text, checked: false, order: itemOrder++ });
+
+    const subItems = await idbGetByParent('templateSubItems', mainItem.id);
+    subItems.sort((a,b) => (a.order??0) - (b.order??0));
+
+    for (const subItem of subItems){
+      // 將子項目作為一個清單項目，並加上縮排，使其在視覺上呈現階層關係
+      await idbPut('checklistItems', { id: uuid(), parentId: checklist.id, checklistId: checklist.id, text: '  - ' + subItem.text, checked: false, order: itemOrder++ });
+    }
   }
   return checklist;
 }
@@ -840,17 +931,61 @@ async function toggleChecklistItem(itemId){
 async function saveChecklistAsTemplate(checklistId){
   const checklist = await idbGet('checklists', checklistId);
   const items = await idbGetByParent('checklistItems', checklistId);
+
+  // 簡單地將清單項目轉換回模板的階層結構
+  // 這裡假設以 "  - " 開頭的項目是子項目
+  let currentMainItem = null;
+  const newDraftTemplateMainItems = [];
+
+  for (const item of items) {
+    if (item.text.startsWith('  - ')) { // 判斷為子項目
+      if (currentMainItem) {
+        currentMainItem.subItems.push({ id: uuid(), text: item.text.substring(4).trim() }); // 移除 "  - "
+      }
+    } else { // 判斷為主項目
+      currentMainItem = { id: uuid(), text: item.text.trim(), subItems: [] };
+      newDraftTemplateMainItems.push(currentMainItem);
+    }
+  }
+
+  // 儲存邏輯與 saveTemplateForm 類似
   if (checklist.templateId){
-    await idbDeleteCascade('templateItems', checklist.templateId);
-    for (const it of items) await idbPut('templateItems', { id: uuid(), parentId: checklist.templateId, templateId: checklist.templateId, text: it.text });
-    const tpl = await idbGet('templates', checklist.templateId);
-    tpl.updatedAt = nowISO();
-    await idbPut('templates', tpl);
+    // 更新現有模板
+    const t = await idbGet('templates', checklist.templateId);
+    t.name = checklist.name; // 模板名稱更新為清單名稱
+    t.category = checklist.category;
+    t.updatedAt = nowISO();
+    await idbPut('templates', t);
+
+    // 刪除該模板下所有現有的主項目和子項目
+    await idbDeleteCascade('templates', checklist.templateId);
+
+    // 儲存新的主項目和子項目
+    for (let i = 0; i < newDraftTemplateMainItems.length; i++) {
+      const mainItem = newDraftTemplateMainItems[i];
+      const mainItemId = uuid();
+      await idbPut('templateMainItems', { id: mainItemId, parentId: checklist.templateId, templateId: checklist.templateId, text: mainItem.text, order: i });
+      for (let j = 0; j < mainItem.subItems.length; j++) {
+        const subItem = mainItem.subItems[j];
+        await idbPut('templateSubItems', { id: uuid(), parentId: mainItemId, mainItemId, text: subItem.text, order: j });
+      }
+    }
   } else {
-    const tpl = { id: uuid(), name: checklist.name, category: checklist.category, createdAt: nowISO(), updatedAt: nowISO() };
-    await idbPut('templates', tpl);
-    for (const it of items) await idbPut('templateItems', { id: uuid(), parentId: tpl.id, templateId: tpl.id, text: it.text });
-    checklist.templateId = tpl.id;
+    // 建立新模板
+    const t = { id: uuid(), name: checklist.name, category: checklist.category, createdAt: nowISO(), updatedAt: nowISO() };
+    await idbPut('templates', t);
+
+    // 儲存主項目和子項目
+    for (let i = 0; i < newDraftTemplateMainItems.length; i++) {
+      const mainItem = newDraftTemplateMainItems[i];
+      const mainItemId = uuid();
+      await idbPut('templateMainItems', { id: mainItemId, parentId: t.id, templateId: t.id, text: mainItem.text, order: i });
+      for (let j = 0; j < mainItem.subItems.length; j++) {
+        const subItem = mainItem.subItems[j];
+        await idbPut('templateSubItems', { id: uuid(), parentId: mainItemId, mainItemId, text: subItem.text, order: j });
+      }
+    }
+    checklist.templateId = t.id; // 將清單與新建立的模板關聯
     await idbPut('checklists', checklist);
   }
 }
@@ -1080,25 +1215,89 @@ async function viewTemplatesList(){
   });
   if (!templates.length) html = '<div class="empty"><b>還沒有任何模板</b>建立可重複使用的打包清單、SOP流程或待買物品清單。</div>';
   return '<div class="topbar"><h1>清單模板</h1></div>'
-    + '<div class="page">'+html+'</div>'
     + '<div class="fab-wrap"><div class="inner"><button class="btn" data-action="newTemplate">＋ 新增模板</button></div></div>'
+    + '<div class="page">'+html+'</div>'
     + tabbar('templates');
 }
+
+// *** 新增：渲染動態模板項目的函式 ***
+function renderTemplateItems(){
+  const container = document.getElementById('templateItemsContainer');
+  if (!container) return;
+
+  container.innerHTML = draftTemplateMainItems.map((mainItem, mainIdx) => `
+    <div class="card" style="margin-bottom:12px;">
+      <div class="row" style="margin-bottom:8px;">
+        <input type="text" class="main-item-input" value="${escapeHtml(mainItem.text)}"
+               data-main-item-idx="${mainIdx}" placeholder="主項目名稱" style="flex:1;">
+        <button class="icon-btn danger-ic" data-action="removeTemplateMainItem" data-id="${mainIdx}">✕</button>
+      </div>
+      <div class="sub-items-list">
+        ${mainItem.subItems.map((subItem, subIdx) => `
+          <div class="row" style="margin-bottom:6px; margin-left:16px;">
+            <input type="text" class="sub-item-input" value="${escapeHtml(subItem.text)}"
+                   data-main-item-idx="${mainIdx}" data-sub-item-idx="${subIdx}" placeholder="子項目內容" style="flex:1;">
+            <button class="icon-btn danger-ic" data-action="removeTemplateSubItem" data-id="${mainIdx}" data-id2="${subIdx}">✕</button>
+          </div>
+        `).join('')}
+      </div>
+      <button class="btn secondary small" style="margin-left:16px; margin-top:8px;"
+              data-action="addTemplateSubItem" data-id="${mainIdx}">＋ 新增子項目</button>
+    </div>
+  `).join('');
+
+  // 為動態生成的輸入框綁定 input 事件，即時更新 draftTemplateMainItems 數據
+  container.querySelectorAll('.main-item-input').forEach(input => {
+    input.oninput = (e) => {
+      const idx = parseInt(e.target.dataset.mainItemIdx);
+      if (draftTemplateMainItems[idx]) {
+        draftTemplateMainItems[idx].text = e.target.value;
+      }
+    };
+  });
+  container.querySelectorAll('.sub-item-input').forEach(input => {
+    input.oninput = (e) => {
+      const mainIdx = parseInt(e.target.dataset.mainItemIdx);
+      const subIdx = parseInt(e.target.dataset.subItemIdx);
+      if (draftTemplateMainItems[mainIdx] && draftTemplateMainItems[mainIdx].subItems[subIdx]) {
+        draftTemplateMainItems[mainIdx].subItems[subIdx].text = e.target.value;
+      }
+    };
+  });
+}
+
 async function viewTemplateForm(templateId){
-  let name='', category='packing', itemsText='';
+  let name='', category='packing';
+  draftTemplateMainItems = []; // 重置草稿數據
+
   if (templateId){
     const t = await idbGet('templates', templateId);
     name = t.name; category = t.category;
-    const items = await idbGetByParent('templateItems', templateId);
-    itemsText = items.map(i=>i.text).join('\n');
+
+    // 從資料庫加載現有的主項目和子項目
+    const mainItems = await idbGetByParent('templateMainItems', templateId); // parentId 是 templateId
+    mainItems.sort((a,b) => (a.order??0) - (b.order??0));
+
+    for (const mainItem of mainItems) {
+      const subItems = await idbGetByParent('templateSubItems', mainItem.id); // parentId 是 mainItem.id
+      subItems.sort((a,b) => (a.order??0) - (b.order??0));
+      draftTemplateMainItems.push({
+        id: mainItem.id,
+        text: mainItem.text,
+        subItems: subItems.map(s => ({ id: s.id, text: s.text }))
+      });
+    }
   }
+
   const cats = ['packing','sop','shopping','todo'];
   const segHtml = cats.map(c=>'<button data-t="'+c+'" data-action="segToggle" class="'+(c===category?'active':'')+'">'+CATEGORY_LABEL[c].replace('清單','').replace('流程','').replace('物品','')+'</button>').join('');
   return '<div class="topbar"><button class="back" data-action="nav" data-hash="/templates">‹</button><h1>'+(templateId?'編輯模板':'新增模板')+'</h1></div>'
     + '<div class="page">'
     + '<label class="field"><span class="lbl">模板名稱</span><input type="text" id="t_name" value="'+escapeHtml(name)+'" placeholder="例如：日本出差打包清單"></label>'
     + '<label class="field"><span class="lbl">分類</span><div class="seg" id="t_cat_seg">'+segHtml+'</div></label>'
-    + '<label class="field"><span class="lbl">項目（每行一項）</span><textarea id="t_items" style="min-height:180px">'+escapeHtml(itemsText)+'</textarea></label>'
+    + '<label class="field"><span class="lbl">項目</span></label>'
+    + '<div id="templateItemsContainer"></div>' // 動態項目容器
+    + '<button class="btn secondary" style="margin-bottom:14px" data-action="addTemplateMainItem">＋ 新增主項目</button>'
     + '<button class="btn" data-action="saveTemplate" data-id="'+(templateId||'')+'">'+(templateId?'儲存變更':'建立模板')+'</button>'
     + (templateId ? '<button class="btn danger" style="margin-top:10px" data-action="deleteTemplate" data-id="'+templateId+'">刪除模板</button>' : '')
     + '</div>';
@@ -1107,18 +1306,48 @@ async function saveTemplateForm(templateId){
   const name = document.getElementById('t_name').value.trim();
   if (!name) return alert('請輸入模板名稱');
   const category = document.querySelector('#t_cat_seg button.active').dataset.t;
-  const itemTexts = nl2li(document.getElementById('t_items').value);
+
+  // 過濾掉空白的主項目和子項目
+  const validMainItems = draftTemplateMainItems.filter(mi => mi.text.trim() !== '');
+  validMainItems.forEach(mi => {
+    mi.subItems = mi.subItems.filter(si => si.text.trim() !== '');
+  });
+
   if (templateId){
+    // 更新現有模板
     const t = await idbGet('templates', templateId);
     t.name = name; t.category = category; t.updatedAt = nowISO();
     await idbPut('templates', t);
-    await idbDeleteCascade('templateItems', templateId);
-    for (const text of itemTexts) await idbPut('templateItems', { id: uuid(), parentId: templateId, templateId, text });
+
+    // 刪除該模板下所有現有的主項目和子項目
+    await idbDeleteCascade('templates', templateId); // 使用新的 idbDeleteCascade 處理階層刪除
+
+    // 儲存新的/更新過的主項目和子項目
+    for (let i = 0; i < validMainItems.length; i++) {
+      const mainItem = validMainItems[i];
+      const mainItemId = uuid(); // 為每個主項目生成新的 ID
+      await idbPut('templateMainItems', { id: mainItemId, parentId: templateId, templateId, text: mainItem.text, order: i });
+      for (let j = 0; j < mainItem.subItems.length; j++) {
+        const subItem = mainItem.subItems[j];
+        await idbPut('templateSubItems', { id: uuid(), parentId: mainItemId, mainItemId, text: subItem.text, order: j });
+      }
+    }
     go('/templates');
   } else {
+    // 建立新模板
     const t = { id: uuid(), name, category, createdAt: nowISO(), updatedAt: nowISO() };
     await idbPut('templates', t);
-    for (const text of itemTexts) await idbPut('templateItems', { id: uuid(), parentId: t.id, templateId: t.id, text });
+
+    // 儲存主項目和子項目
+    for (let i = 0; i < validMainItems.length; i++) {
+      const mainItem = validMainItems[i];
+      const mainItemId = uuid();
+      await idbPut('templateMainItems', { id: mainItemId, parentId: t.id, templateId: t.id, text: mainItem.text, order: i });
+      for (let j = 0; j < mainItem.subItems.length; j++) {
+        const subItem = mainItem.subItems[j];
+        await idbPut('templateSubItems', { id: uuid(), parentId: mainItemId, mainItemId, text: subItem.text, order: j });
+      }
+    }
     go('/template/'+t.id);
   }
 }
